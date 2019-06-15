@@ -297,7 +297,7 @@ public class CooperativeModule {
       gridftp = rc.gridftp;
       if (gridftp) {
         facade = new GridFTPServerFacade((GridFTPControlChannel) rc.fc);
-        ((GridFTPServerFacade) facade).setDataChannelAuthentication(DataChannelAuthentication.NONE);
+        //((GridFTPServerFacade) facade).setDataChannelAuthentication(DataChannelAuthentication.NONE);
       } else {
         facade = new FTPServerFacade(rc.fc);
       }
@@ -1024,13 +1024,13 @@ public class CooperativeModule {
       if (cc.sc.local) {
         return StorkUtil.list(path);
       }
-
       ChannelPair cc = new ChannelPair(this.cc.sc);
 
       LinkedList<String> dirs = new LinkedList<String>();
       dirs.add("");
-      System.out.println("Listing ");
       cc.rc.exchange("OPTS MLST type;size;");
+      //reply = cc.rc.exchange("PBSZ 1048576;");
+      //System.out.println(reply.getCode() + "\t" + reply.getMessage());
       // Keep listing and building subdirectory lists.
 
       // TODO: Replace with pipelining structure.
@@ -1055,7 +1055,6 @@ public class CooperativeModule {
         // Read the pipelined responses like a champ.
         for (String p : working) {
           ListSink sink = new ListSink(path);
-
           // Interpret the pipelined PASV command.
           try {
             HostPort hp = cc.getPasvReply();
@@ -1878,7 +1877,6 @@ public class CooperativeModule {
             FTPURI dstFTPUri = new FTPURI(dstUri, du.cred);
             //System.out.println("Took " + (System.currentTimeMillis() - start)/1000.0 + " seconds to get cannocical name");
             channel = new ChannelPair(srcFTPUri, dstFTPUri);
-            //System.out.println("Created a channel between " + channel.rc.fc.getHost() + " and " + channel.sc.fc.getHost());
             success = setupChannelConf(channel, channelId, chunk, firstFileToTransfer);
             if (success) {
               synchronized (chunk.getRecords().channels) {
