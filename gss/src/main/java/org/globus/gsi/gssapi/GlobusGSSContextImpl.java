@@ -1060,6 +1060,7 @@ done:      do {
                     }
 
                     // mutual authentication test
+                    /*
                     if (this.expectedTargetName != null &&
                         !this.expectedTargetName.equals(this.targetName)) {
                         throw new GlobusGSSException(GSSException.UNAUTHORIZED,
@@ -1068,6 +1069,7 @@ done:      do {
                                                      new Object[] {this.expectedTargetName,
                                                                    this.targetName});
                     }
+                    */
 
                     if (this.gssMode == GSIConstants.MODE_GSI) {
                         this.state = CLIENT_START_DEL;
