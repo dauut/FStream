@@ -4,9 +4,9 @@
 package client.hysterisis;
 
 import client.AdaptiveGridFTPClient;
-import client.ConfigurationParams;
-import client.log.LogManager;
 import client.utils.Utils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import java.util.Date;
 import java.util.List;
@@ -41,6 +41,8 @@ public class Entry {
   // Used to distinguish same dataset runs with different times.
   private int groupNumber;
   private int maxConcurrency;
+
+  private static final Log LOG = LogFactory.getLog(Entry.class);
 
   public Entry() {
     date = new Date();
@@ -489,10 +491,10 @@ public class Entry {
     for (int i = 0; i < extraInfo.length; i++) {
       sb.append(extraInfo[i] + "\t");
     }
-    LogManager.writeToLog(note + "*" + fileSize + "*" + fileCount + "*" + density.name() + "*" + testbed + "*" + source + "*" +
+    LOG.info(note + "*" + fileSize + "*" + fileCount + "*" + density.name() + "*" + testbed + "*" + source + "*" +
             destination + "*" + bandwidth + "*" + RTT + "*" + bufferSize + "*p:" + parallellism + "*cc:" +
             concurrency + "*ppq:" + pipelining + "*" + fast + "*" + throughput + "*" + isEmulation + "*" +
-            isDedicated + " date:" + date.toString() + " Extra:" + sb.toString(), ConfigurationParams.STDOUT_ID);
+            isDedicated + " date:" + date.toString() + " Extra:" + sb.toString());
   }
 
   public String printSpecVector() {

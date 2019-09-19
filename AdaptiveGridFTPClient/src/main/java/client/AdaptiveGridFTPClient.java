@@ -2,7 +2,6 @@ package client;
 
 import client.hysterisis.Entry;
 import client.hysterisis.Hysteresis;
-import client.log.LogManager;
 import client.utils.Utils;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
@@ -24,14 +23,11 @@ public class AdaptiveGridFTPClient {
   public AdaptiveGridFTPClient() {
     //initialize output streams for message logging
     conf = new ConfigurationParams();
-    LogManager.createLogFile(ConfigurationParams.STDOUT_ID);
-    LogManager.createLogFile(ConfigurationParams.INFO_LOG_ID);
   }
 
   @VisibleForTesting
   public AdaptiveGridFTPClient(GridFTPClient gridFTPClient) {
     this.gridFTPClient = gridFTPClient;
-    LogManager.createLogFile(ConfigurationParams.STDOUT_ID);
   }
 
   public static void main(String[] args) throws Exception {
@@ -150,7 +146,6 @@ public class AdaptiveGridFTPClient {
     GridFTPClient.executor.shutdown();
     while (!GridFTPClient.executor.isTerminated()) {
     }
-    LogManager.close();
     gridFTPClient.stop();
   }
 

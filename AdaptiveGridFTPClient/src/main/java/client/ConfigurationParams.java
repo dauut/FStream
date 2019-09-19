@@ -12,11 +12,9 @@ public class ConfigurationParams {
   public static String INPUT_DIR = "/Users/earslan/HARP/historical_data/activeFiles/";
   public static String OUTPUT_DIR = "/Users/earslan/HARP/target/";
   public static long MAXIMUM_SINGLE_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
-  public static String STDOUT_ID = "stdout";
   public static double cc_rate = 0.7;
   public static double p_rate = 0.7;
   public static double ppq_rate = 0.99;
-  static String INFO_LOG_ID = "throughput.log";
 
   String source, destination, testbed;
   double bandwidth, rtt, bufferSize;
@@ -227,10 +225,6 @@ public class ConfigurationParams {
         useMaxCC = true;
         usedSecondArgument = false;
         LOG.info("Use of maximum concurrency enabled.");
-        break;
-      case "-throughput-log-file":
-        ConfigurationParams.INFO_LOG_ID = args[1];
-        LOG.info("Dynamic scheduling enabled.");
         break;
       case "-perf-freq":
         perfFreq = Integer.parseInt(args[1]);
