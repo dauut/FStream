@@ -143,7 +143,6 @@ public class Utils {
       //merge small chunk with the the chunk with closest centroid
       if ((p.getRecords().count() < 2 || p.getRecords().size() < 5 * bdp) && fileClusters.size() > 1) {
         int index = -1;
-        LOG.info(i + " is too small " + p.getRecords().count() + " files total size:" + Utils.printSize( p.getRecords().size(), true));
         double diff = Double.POSITIVE_INFINITY;
         for (int j = 0; j < fileClusters.size(); j++) {
           if (j != i && Math.abs(p.getCentroid() - fileClusters.get(j).getCentroid()) < diff) {
@@ -156,9 +155,6 @@ public class Utils {
           System.exit(-1);
         }
         fileClusters.get(index).getRecords().addAll(p.getRecords());
-        LOG.info("FileCluster " + i + " " + p.getRecords().count() + " files " +
-                Utils.printSize(p.getRecords().size(), true));
-        LOG.info("Merging partition " + i + " to partition " + index);
         fileClusters.remove(i);
         i--;
       }
@@ -192,6 +188,8 @@ public class Utils {
       }
 
       for (int i = 0; i < totalChunks; i++) {
+        FileCluster fileCluster = chunks.get(i);
+        fileCluster.getTunableParameters().setConcurrency(concurrencyLevels[i]);
         System.out.println("Chunk " + i + ":" + concurrencyLevels[i] + "channels");
       }
     } else {

@@ -54,6 +54,7 @@ public class AdaptiveGridFTPClient {
     transferTask.setBandwidth(conf.bandwidth);
     transferTask.setRtt(conf.rtt);
     transferTask.setBDP((transferTask.getBandwidth() * transferTask.getRtt()) / 8); // In MB
+    transferTask.setBufferSize(conf.bufferSize);
     transferTask.setMaxConcurrency(conf.maxConcurrency);
 
     if (gridFTPClient == null) {
@@ -79,21 +80,15 @@ public class AdaptiveGridFTPClient {
     //First fetch the list of files to be transferred
     XferList dataset = gridFTPClient.getListofFiles();
     long datasetSize = dataset.size();
+    LOG.info("file listing completed at:" + ((System.currentTimeMillis() - startTime) / 1000.0) +
+            " data size:" + Utils.printSize(datasetSize, true));
     ArrayList<FileCluster> chunks = Utils.createFileClusters(dataset, conf.bandwidth, conf.rtt, conf.maximumChunks);
-
     if (conf.useHysterisis) {
-      // this will initialize matlab connection while running hysteresis analysis
+      // Initialize historical data analysis
       hysteresis = new Hysteresis();
       hysteresis.findOptimalParameters(chunks, transferTask);
     }
 
-    //Get metadata information of dataset
-
-    LOG.info("file listing completed at:" + ((System.currentTimeMillis() - startTime) / 1000.0) +
-            " data size:" + dataset.size());
-
-    // Check if there are multiple hosts behind given hostname
-    // Make sure hostname resolution operations are completed before starting to a transfer
 
     int[][] estimatedParamsForChunks = new int[chunks.size()][4];
     long timeSpent = 0;
@@ -108,11 +103,10 @@ public class AdaptiveGridFTPClient {
         }
         GridFTPClient.executor.submit(new GridFTPClient.ModellingThread());
         chunks.forEach(chunk -> gridFTPClient.runTransfer(chunk));
-
         break;
       default:
         // Make sure total channels count does not exceed total file count
-        int totalChannelCount = Math.min(transferTask.getMaxConcurrency(), dataset.count());
+        int totalChannelCount = Math.min(conf.maxConcurrency, dataset.count());
         if (conf.useHysterisis) {
           int maxConcurrency = 0;
           for (int i = 0; i < estimatedParamsForChunks.length; i++) {
@@ -121,7 +115,6 @@ public class AdaptiveGridFTPClient {
               maxConcurrency = estimatedParamsForChunks[i][0];
             }
           }
-          LOG.info(" Running MC with :" + maxConcurrency + " channels.");
           totalChannelCount = maxConcurrency;
         } else {
           for (int i = 0; i < estimatedParamsForChunks.length; i++) {

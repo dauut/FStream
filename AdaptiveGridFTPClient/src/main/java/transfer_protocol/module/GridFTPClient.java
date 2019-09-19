@@ -49,7 +49,7 @@ public class GridFTPClient implements Runnable {
     public boolean useDynamicScheduling = false;
     public boolean useOnlineTuning =  false;
 
-    private static final Log LOG = LogFactory.getLog(AdaptiveGridFTPClient.class);
+    private static final Log LOG = LogFactory.getLog(GridFTPClient.class);
 
     public GridFTPClient(String source, String dest, String proxy) {
         try {
@@ -201,6 +201,7 @@ public class GridFTPClient implements Runnable {
     public void start() {
         connectionThread = new Thread(this);
         connectionThread.start();
+        // Check if there are multiple hosts behind given hostname
         sourceHostResolutionThread = new HostResolution(usu.getHost());
         destinationHostResolutionThread = new HostResolution(udu.getHost());
         sourceHostResolutionThread.start();
@@ -220,6 +221,7 @@ public class GridFTPClient implements Runnable {
             } catch (Exception e) {
             }
         }
+        // Make sure hostname resolution operations are completed before starting to a transfer
         try {
             sourceHostResolutionThread.join();
             destinationHostResolutionThread.join();
@@ -476,10 +478,17 @@ public class GridFTPClient implements Runnable {
                     //xl.instant_throughput = 0;
                     estimatedCompletionTime = ((xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput) - xl.interval;
                     xl.interval += interval;
-                    System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() +
-                            "\t total:" + Utils.printSize(xl.size(), true) + "\t interval:" + xl.interval + "\t onAir:" + xl.onAir);
+                    System.out.println("Chunk " + i +
+                            "\t threads:" + xl.channels.size() +
+                            "\t count:" + xl.count() +
+                            "\t total:" + Utils.printSize(xl.size(), true) +
+                            "\t interval:" + xl.interval +
+                            "\t onAir:" + xl.onAir);
                 } else { // This chunk is active but has not transferred any data yet
-                    System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t total:" + Utils.printSize(xl.size(), true)
+                    System.out.println("Chunk " + i +
+                            "\t threads:" + xl.channels.size() +
+                            "\t count:" + xl.count() +
+                            "\t total:" + Utils.printSize(xl.size(), true)
                             + "\t onAir:" + xl.onAir);
                     if (xl.channels.size() == 0) {
                         estimatedCompletionTime = Double.POSITIVE_INFINITY;
@@ -505,12 +514,12 @@ public class GridFTPClient implements Runnable {
                 System.out.println("Chunk " + i +
                         "\t threads:" + xl.channels.size() +
                         "\t count:" + xl.count() +
-                        "\t finished:" +
-                        Utils.printSize(xl.totalTransferredSize, true) +
+                        "\t transferred:" + Utils.printSize(xl.totalTransferredSize, true) +
                         "/" + Utils.printSize(xl.initialSize, true) +
                         "\t throughput:" +  Utils.printSize(xl.instant_throughput, false) +
                         "/" + Utils.printSize(xl.weighted_throughput, true) +
-                        "\testimated time:" + df.format(estimatedCompletionTime) + "\t onAir:" + xl.onAir);
+                        "\testimated time:" + df.format(estimatedCompletionTime) +
+                        "\t onAir:" + xl.onAir);
                 xl.instantTransferredSize = xl.totalTransferredSize;
             }
             estimatedCompletionTimes[i] = estimatedCompletionTime;
