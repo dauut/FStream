@@ -1,4 +1,4 @@
-package stork.util;
+package transfer_protocol.util;
 
 // Used to track transfer progress. Just tell this thing when some
 // bytes or a file are done and it will update its state with that

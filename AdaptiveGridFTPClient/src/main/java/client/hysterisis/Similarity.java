@@ -1,7 +1,8 @@
 package client.hysterisis;
 
 import client.AdaptiveGridFTPClient;
-import client.Partition;
+import client.ConfigurationParams;
+import client.FileCluster;
 import client.utils.csv.CSVReader;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -106,7 +107,7 @@ public class Similarity {
             entry.setBandwidth(entry.getBandwidth() * Math.pow(10, 6));
           }
           entry.setDensity(Entry.findDensityOfList(entry.getFileSize(), entry.getBandwidth(),
-              AdaptiveGridFTPClient.maximumChunks));
+              ConfigurationParams.maximumChunks));
           entry.setNote(fileName);
         } catch (Exception e) {
           for (String s : record)
@@ -217,7 +218,7 @@ public class Similarity {
     }
   }
 
-  static public void normalizeDataset3(List<List<Entry>> entries, List<Partition> chunks) {
+  static public void normalizeDataset3(List<List<Entry>> entries, List<FileCluster> chunks, Entry transferTask) {
     double[] maxValues = entries.size() == 0 ? null : new double[entries.get(0).get(0).specVector.size()];
     Arrays.fill(maxValues, Double.NEGATIVE_INFINITY);
     for (List<Entry> entryList : entries) {
@@ -246,11 +247,11 @@ public class Similarity {
     }
 
     for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
-      Entry targetEntry = chunks.get(chunkNumber).entry;
+      //Entry targetEntry = chunks.get(chunkNumber).entry;
       //Normalize values of target entry
-      for (int i = 0; i < targetEntry.specVector.size(); i++) {
-        double newValue = targetEntry.specVector.get(i) * ratios[i];
-        targetEntry.specVector.set(i, newValue);
+      for (int i = 0; i < transferTask.specVector.size(); i++) {
+        double newValue = transferTask.specVector.get(i) * ratios[i];
+        transferTask.specVector.set(i, newValue);
       }
     }
 
@@ -305,7 +306,7 @@ public class Similarity {
     Entry prev = similarEntries.get(0);
     double totalSimilarity = 0;
     for (Entry e : similarEntries) {
-      /* Partition entries in two conditions:
+      /* FileCluster entries in two conditions:
        * 1. MlsxEntry's network or data set characteristics is seen for the first time
 			 * 2. Already seen entry type's repeating parameter values
 			 */

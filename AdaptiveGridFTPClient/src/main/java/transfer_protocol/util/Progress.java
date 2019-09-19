@@ -1,4 +1,4 @@
-package stork.util;
+package transfer_protocol.util;
 
 // Class representing progress for an arbitrary statistic.
 

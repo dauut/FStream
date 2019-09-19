@@ -1,17 +1,26 @@
 package client.utils;
 
 import client.AdaptiveGridFTPClient;
-import stork.module.CooperativeModule;
-import stork.util.XferList;
+import client.ConfigurationParams;
+import client.FileCluster;
+import client.hysterisis.Entry;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import transfer_protocol.module.ChannelModule;
+import transfer_protocol.util.XferList;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 public class Utils {
+  private static final Log LOG = LogFactory.getLog(Utils.class);
 
   public static String printSize(double random, boolean inByte) {
     char sizeUnit = 'b';
@@ -74,7 +83,7 @@ public class Utils {
 
   public static List<Integer> getChannels(XferList xl) {
     List<Integer> list = new LinkedList<Integer>();
-    for (CooperativeModule.ChannelPair channel : xl.channels) {
+    for (ChannelModule.ChannelPair channel : xl.channels) {
       list.add(channel.getId());
     }
     return list;
@@ -90,6 +99,163 @@ public class Utils {
       return Density.MEDIUM;
     } else {
       return Density.LARGE;
+    }
+  }
+
+  @VisibleForTesting
+  public static ArrayList<FileCluster> createFileClusters(XferList list, double bandwidth, double rtt,
+                                                          int maximumChunks) {
+    list.shuffle();
+
+    ArrayList<FileCluster> fileClusters = new ArrayList<>();
+    for (int i = 0; i < maximumChunks; i++) {
+      FileCluster p = new FileCluster();
+      fileClusters.add(p);
+    }
+    for (XferList.MlsxEntry e : list) {
+      if (e.dir) {
+        continue;
+      }
+      Density density = Utils.findDensityOfFile(e.size(), bandwidth, maximumChunks);
+      fileClusters.get(density.ordinal()).addRecord(e);
+    }
+    Collections.sort(fileClusters);
+    mergePartitions(fileClusters, bandwidth, rtt);
+
+    for (int i = 0; i < fileClusters.size(); i++) {
+      FileCluster chunk = fileClusters.get(i);
+      chunk.getRecords().sp = list.sp;
+      chunk.getRecords().dp = list.dp;
+      long avgFileSize = chunk.getRecords().size() / chunk.getRecords().count();
+      chunk.setDensity(Entry.findDensityOfList(avgFileSize, bandwidth, maximumChunks));
+      LOG.info("Chunk " + i + ":\tfiles:" + fileClusters.get(i).getRecords().count() + "\t avg:" +
+              Utils.printSize(fileClusters.get(i).getCentroid(), true)
+              + " \t total:" + Utils.printSize(fileClusters.get(i).getRecords().size(), true) + " Density:" +
+              chunk.getDensity());
+    }
+    return fileClusters;
+  }
+
+  public static ArrayList<FileCluster> mergePartitions(ArrayList<FileCluster> fileClusters, double bandwidth, double rtt) {
+    double bdp = bandwidth * rtt / 8;
+    for (int i = 0; i < fileClusters.size(); i++) {
+      FileCluster p = fileClusters.get(i);
+      //merge small chunk with the the chunk with closest centroid
+      if ((p.getRecords().count() < 2 || p.getRecords().size() < 5 * bdp) && fileClusters.size() > 1) {
+        int index = -1;
+        LOG.info(i + " is too small " + p.getRecords().count() + " files total size:" + Utils.printSize( p.getRecords().size(), true));
+        double diff = Double.POSITIVE_INFINITY;
+        for (int j = 0; j < fileClusters.size(); j++) {
+          if (j != i && Math.abs(p.getCentroid() - fileClusters.get(j).getCentroid()) < diff) {
+            diff = Math.abs(p.getCentroid() - fileClusters.get(j).getCentroid());
+            index = j;
+          }
+        }
+        if (index == -1) {
+          LOG.fatal("Fatal error: Could not find chunk to merge!");
+          System.exit(-1);
+        }
+        fileClusters.get(index).getRecords().addAll(p.getRecords());
+        LOG.info("FileCluster " + i + " " + p.getRecords().count() + " files " +
+                Utils.printSize(p.getRecords().size(), true));
+        LOG.info("Merging partition " + i + " to partition " + index);
+        fileClusters.remove(i);
+        i--;
+      }
+    }
+    return fileClusters;
+  }
+
+  public static void allocateChannelsToChunks(List<FileCluster> chunks, final int channelCount,
+                                       ConfigurationParams.ChannelDistributionPolicy channelDistPolicy) {
+    int totalChunks = chunks.size();
+    int[] fileCount = new int[totalChunks];
+    for (int i = 0; i < totalChunks; i++) {
+      fileCount[i] = chunks.get(i).getRecords().count();
+    }
+
+    int[] concurrencyLevels = new int[totalChunks];
+    if (channelDistPolicy == ConfigurationParams.ChannelDistributionPolicy.ROUND_ROBIN) {
+      int modulo = (totalChunks + 1) / 2;
+      int count = 0;
+      for (int i = 0; count < channelCount; i++) {
+        int index = i % modulo;
+        if (concurrencyLevels[index] < fileCount[index]) {
+          concurrencyLevels[index]++;
+          count++;
+        }
+        if (index < totalChunks - index - 1 && count < channelCount
+                && concurrencyLevels[totalChunks - index - 1] < fileCount[totalChunks - index - 1]) {
+          concurrencyLevels[totalChunks - index - 1]++;
+          count++;
+        }
+      }
+
+      for (int i = 0; i < totalChunks; i++) {
+        System.out.println("Chunk " + i + ":" + concurrencyLevels[i] + "channels");
+      }
+    } else {
+      double[] chunkWeights = new double[chunks.size()];
+      double totalWeight = 0;
+
+      double[] chunkSize = new double[chunks.size()];
+      for (int i = 0; i < chunks.size(); i++) {
+        chunkSize[i] = chunks.get(i).getTotalSize();
+        Utils.Density densityOfChunk = chunks.get(i).getDensity();
+        switch (densityOfChunk) {
+          case SMALL:
+            chunkWeights[i] = 3 * chunkSize[i];
+            break;
+          case MEDIUM:
+            chunkWeights[i] = 2 * chunkSize[i];
+            break;
+          case LARGE:
+            chunkWeights[i] = 1 * chunkSize[i];
+            break;
+          case HUGE:
+            chunkWeights[i] = 1 * chunkSize[i];
+            break;
+          default:
+            break;
+        }
+        totalWeight += chunkWeights[i];
+      }
+    int remainingChannelCount = channelCount;
+
+      for (int i = 0; i < totalChunks; i++) {
+        double propChunkWeight = (chunkWeights[i] * 1.0 / totalWeight);
+        concurrencyLevels[i] = Math.min(remainingChannelCount, (int) Math.floor(channelCount * propChunkWeight));
+        remainingChannelCount -= concurrencyLevels[i];
+        //System.out.println("Channel "+i + "weight:" +propChunkWeight  + "got " + concurrencyLevels[i] + "channels");
+      }
+
+      // Since we take floor when calculating, total channels might be unassigned.
+      // If so, starting from fileClusters with zero channels, assign remaining channels
+      // in round robin fashion
+      for (int i = 0; i < chunks.size(); i++) {
+        if (concurrencyLevels[i] == 0 && remainingChannelCount > 0) {
+          concurrencyLevels[i]++;
+          remainingChannelCount--;
+        }
+      }
+      //find the fileClusters with minimum assignedChannelCount
+      while (remainingChannelCount > 0) {
+        int minChannelCount = Integer.MAX_VALUE;
+        int chunkIdWithMinChannel = -1;
+        for (int i = 0; i < chunks.size(); i++) {
+          if (concurrencyLevels[i] < minChannelCount) {
+            minChannelCount = concurrencyLevels[i];
+            chunkIdWithMinChannel = i;
+          }
+        }
+        concurrencyLevels[chunkIdWithMinChannel]++;
+        remainingChannelCount--;
+      }
+      for (int i = 0; i < totalChunks; i++) {
+        FileCluster fileCluster = chunks.get(i);
+        fileCluster.getTunableParameters().setConcurrency(concurrencyLevels[i]);
+        LOG.info("Chunk " + fileCluster.getDensity() + " weight " + chunkWeights[i] + " cc: " + concurrencyLevels[i]);
+      }
     }
   }
 

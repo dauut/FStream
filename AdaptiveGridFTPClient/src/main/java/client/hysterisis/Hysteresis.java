@@ -2,7 +2,7 @@ package client.hysterisis;
 
 import client.AdaptiveGridFTPClient;
 import client.ConfigurationParams;
-import client.Partition;
+import client.FileCluster;
 import client.utils.TunableParameters;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -14,14 +14,14 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public class Hysterisis {
+public class Hysteresis {
 
-  private static final Log LOG = LogFactory.getLog(Hysterisis.class);
+  private static final Log LOG = LogFactory.getLog(Hysteresis.class);
   private static List<List<Entry>> entries;
   private double[] estimatedThroughputs;
   private int[][] estimatedParamsForChunks;
 
-  public static double[] runModelling(Partition chunk, TunableParameters tunableParameters, double sampleThroughput,
+  public static double[] runModelling(FileCluster chunk, TunableParameters tunableParameters, double sampleThroughput,
                                       double[] relaxation_rates) {
     double []resultValues = new double[4];
     try {
@@ -92,7 +92,7 @@ public class Hysterisis {
     //System.out.println("Skipped MlsxEntry count =" + Similarity.skippedEntryCount);
   }
 
-  public void findOptimalParameters(List<Partition> chunks, Entry intendedTransfer) throws Exception {
+  public void findOptimalParameters(List<FileCluster> chunks, Entry transferTask) throws Exception {
     parseInputFiles();
     if (entries.isEmpty()) {  // Make sure there are log files to run hysterisis
       LOG.fatal("No input entries found to run hysterisis analysis. Exiting...");
@@ -100,10 +100,10 @@ public class Hysterisis {
 
     // Find out similar entries
     int[] setCounts = new int[chunks.size()];
-    Similarity.normalizeDataset3(entries, chunks);
+    Similarity.normalizeDataset3(entries, chunks, transferTask);
     //LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
     for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
-      List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
+      List<Entry> similarEntries = Similarity.findSimilarEntries(entries, transferTask);
       //Categorize selected entries based on log date
       List<List<Entry>> trials = new LinkedList<>();
       Similarity.categorizeEntries(similarEntries, chunks.get(chunkNumber).getDensity().name());

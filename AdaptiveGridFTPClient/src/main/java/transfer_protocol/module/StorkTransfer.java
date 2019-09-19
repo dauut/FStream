@@ -1,4 +1,4 @@
-package stork.module;
+package transfer_protocol.module;
 
 interface StorkTransfer extends Runnable {
   void start();

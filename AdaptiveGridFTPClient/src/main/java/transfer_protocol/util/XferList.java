@@ -1,10 +1,9 @@
-package stork.util;
+package transfer_protocol.util;
 
 import client.ConfigurationParams;
-import client.utils.Statistics;
 import client.utils.Utils;
 import org.apache.commons.math3.ml.clustering.Clusterable;
-import stork.module.CooperativeModule;
+import transfer_protocol.module.ChannelModule;
 
 import java.util.*;
 
@@ -15,7 +14,7 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
   public double estimatedFinishTime = Integer.MAX_VALUE;
   public double instant_throughput = 0, weighted_throughput = 0;
   public long initialSize = 0;
-  public List<CooperativeModule.ChannelPair> channels;
+  public List<ChannelModule.ChannelPair> channels;
   public int interval = 0;
   public int onAir = 0;
   public Utils.Density density;

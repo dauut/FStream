@@ -3,7 +3,7 @@ package client;
 import client.hysterisis.Entry;
 import client.utils.TunableParameters;
 import client.utils.Utils;
-import stork.util.XferList;
+import transfer_protocol.util.XferList;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -12,8 +12,7 @@ import java.util.List;
  * Represents a calculated partition. A partition contains the centroid and
  * the data points.
  */
-public class Partition implements Comparable {
-  public Entry entry;
+public class FileCluster implements Comparable {
   public boolean isReadyToTransfer = false;
   /*variables for log based approach*/
   //Observed max values for each parameters in the log files
@@ -32,13 +31,12 @@ public class Partition implements Comparable {
    * @return the density
    */
 
-  public Partition(double centroid) {
+  public FileCluster(double centroid) {
     this.centroid = centroid;
   }
 
-  public Partition() {
+  public FileCluster() {
     this.centroid = 0;
-    entry = new Entry();
   }
 
   /**
@@ -82,15 +80,6 @@ public class Partition implements Comparable {
   public void setMaxPPQ(int maxPPQ) {
     this.maxPPQ = maxPPQ;
   }
-
-  public void setEntry(Entry e) {
-    entry.setBandwidth(e.getBandwidth());
-    entry.setRtt(e.getRtt());
-    entry.setBDP(e.getBDP());
-    entry.setBufferSize(e.getBufferSize());
-    entry.setDedicated(e.isDedicated());
-  }
-
   public long getCentroid() {
     if (fileList.count() == 0) {
       return 0;
@@ -201,7 +190,7 @@ public class Partition implements Comparable {
 
   @Override
   public int compareTo(Object o) {
-    long centroid = ((Partition) o).getCentroid();
+    long centroid = ((FileCluster) o).getCentroid();
     if (getCentroid() > centroid)
       return 1;
     if (centroid == getCentroid())
