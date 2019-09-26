@@ -242,8 +242,8 @@ public class GridFTPClient implements Runnable {
         return (rv >= 0) ? rv : 255;
     }
 
-    public XferList getListofFiles() throws Exception {
-        return ftpClient.getListofFiles(usu.getPath(), udu.getPath());
+    public XferList getListofFiles(HashSet<String> prevList) throws Exception {
+        return ftpClient.getListofFiles(usu.getPath(), udu.getPath(), prevList);
     }
 
     public void runTransfer(final FileCluster fileCluster) {
@@ -303,10 +303,10 @@ public class GridFTPClient implements Runnable {
             System.exit(-1);
         }
         //Close all channels before exiting
-        for (int i = 1; i < ftpClient.channelList.size(); i++) {
-            ftpClient.channelList.get(i).close();
-        }
-        ftpClient.channelList.clear();
+//        for (int i = 1; i < ftpClient.channelList.size(); i++) {
+//            ftpClient.channelList.get(i).close();
+//        }
+//        ftpClient.channelList.clear();
     }
 
     public static class TransferChannel implements Runnable {
@@ -322,6 +322,8 @@ public class GridFTPClient implements Runnable {
             this.fileCluster = fileCluster;
             firstFileToTransfer = file;
         }
+
+        public static List<ChannelModule.ChannelPair> channelPairList = new ArrayList<>();
 
         @Override
         public void run() {
@@ -355,6 +357,7 @@ public class GridFTPClient implements Runnable {
                     FTPURI srcFTPUri = new FTPURI(srcUri, su.cred);
                     FTPURI dstFTPUri = new FTPURI(dstUri, du.cred);
                     channel = new ChannelModule.ChannelPair(srcFTPUri, dstFTPUri);
+                    channelPairList.add(channel);
                     success = setupChannelConf(channel, channelId, fileCluster, firstFileToTransfer);
                     if (success) {
                         synchronized (fileCluster.getRecords().channels) {

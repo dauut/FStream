@@ -10,6 +10,7 @@ import transfer_protocol.util.StorkUtil;
 import transfer_protocol.util.TransferProgress;
 import transfer_protocol.util.XferList;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -53,7 +54,7 @@ public class FTPClient {
     }
 
     // Recursively list directories.
-    public XferList mlsr() throws Exception {
+    public XferList mlsr(HashSet<String> prevList) throws Exception {
         final String MLSR = "MLSR", MLSD = "MLSD";
         final int MAXIMUM_PIPELINING = 200;
         int currentPipelining = 0;
@@ -117,7 +118,7 @@ public class FTPClient {
                     continue;
                 }
 
-                XferList xl = sink.getList(p);
+                XferList xl = sink.getList(p,prevList);
 
                 // If we did mlsr, return the list.
                 if (cmd == MLSR) {
@@ -176,7 +177,7 @@ public class FTPClient {
 
 
     //returns list of files to be transferred
-    public XferList getListofFiles(String sp, String dp) throws Exception {
+    public XferList getListofFiles(String sp, String dp, HashSet<String> prevList) throws Exception {
         checkTransfer();
 
         checkTransfer();
@@ -191,7 +192,7 @@ public class FTPClient {
         // See if we're doing a directory transfer and need to build
         // a directory list.
         if (sp.endsWith("/")) {
-            xl = mlsr();
+            xl = mlsr(prevList);
             xl.dp = dp;
         } else {  // Otherwise it's just one file.
             xl = new XferList(sp, dp, size(sp));
@@ -208,7 +209,7 @@ public class FTPClient {
     }
 
     // Transfer a list over a channel.
-    void transferList(ChannelModule.ChannelPair cc) throws Exception {
+    public void transferList(ChannelModule.ChannelPair cc) throws Exception {
         checkTransfer();
         //add first piped file to onAir list
         XferList fileList = cc.chunk.getRecords();
@@ -281,7 +282,7 @@ public class FTPClient {
             System.out.println("Channel " + cc.getId() +  " is null");
         }
         else {
-            cc.close();
+//            cc.close();
         }
     }
 
@@ -302,7 +303,7 @@ public class FTPClient {
         ChannelModule.ChannelPair newChannel;
         if (Math.abs(oldChannel.chunk.getTunableParameters().getParallelism() -
                 oldChannel.newChunk.getTunableParameters().getParallelism()) > 1) {
-            oldChannel.close();
+//            oldChannel.close();
             newChannel = new ChannelModule.ChannelPair(su, du);
             boolean success = GridFTPClient.setupChannelConf(newChannel, oldChannel.getId(), oldChannel.newChunk, fileToStart);
             if (!success) {

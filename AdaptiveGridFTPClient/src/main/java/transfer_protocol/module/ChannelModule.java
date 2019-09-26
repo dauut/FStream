@@ -164,7 +164,7 @@ public class ChannelModule {
     }
 
     // Get the list from the sink as an XferList.
-    public XferList getList(String path) {
+    public XferList getList(String path, HashSet<String> prevList) {
       XferList xl = new XferList(base, "");
       String line;
 
@@ -176,11 +176,13 @@ public class ChannelModule {
           String fileName = m.getFileName();
           String type = m.get("type");
           String size = m.get("size");
-
-          if (type.equals(org.globus.ftp.MlsxEntry.TYPE_FILE)) {
-            xl.add(path + fileName, Long.parseLong(size));
-          } else if (!fileName.equals(".") && !fileName.equals("..")) {
-            xl.add(path + fileName);
+// check if we have files previous bulk
+          if (prevList != null && !prevList.contains(fileName)) {
+            if (type.equals(org.globus.ftp.MlsxEntry.TYPE_FILE)) {
+              xl.add(path + fileName, Long.parseLong(size));
+            } else if (!fileName.equals(".") && !fileName.equals("..")) {
+              xl.add(path + fileName);
+            }
           }
         } catch (Exception e) {
           e.printStackTrace();
@@ -401,8 +403,8 @@ public class ChannelModule {
     public FileCluster chunk, newChunk;
     public boolean isConfigurationChanged = false;
     public boolean enableCheckSum = false;
-    Queue<XferList.MlsxEntry> inTransitFiles = new LinkedList<>();
-    private int parallelism = 1, pipelining = 0, trev = 5;
+    public Queue<XferList.MlsxEntry> inTransitFiles = new LinkedList<>();
+    public int parallelism = 1, pipelining = 0, trev = 5;
     private char mode = 'S', type = 'A';
     private boolean dataChannelReady = false;
     private int id;
@@ -567,7 +569,7 @@ public class ChannelModule {
     }
 
     // Set the parallelism for this pair.
-    void setParallelism(int p) throws Exception {
+    public void setParallelism(int p) throws Exception {
       if (!rc.gridftp || parallelism == p) {
         return;
       }
@@ -656,7 +658,7 @@ public class ChannelModule {
     }
 
     // Prepare the channels to transfer an XferEntry.
-    void pipeTransfer(XferList.MlsxEntry e) {
+    public void pipeTransfer(XferList.MlsxEntry e) {
       try {
         if (e.dir) {
           pipeMkdir(e.dpath());
