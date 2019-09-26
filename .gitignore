@@ -17,3 +17,14 @@ test-output
 *.xml~
 *.log
 *.DS_Store
+axis/
+container-test-utils/
+gram/
+gridftp/
+gss/
+io/
+jsse/
+myproxy/
+ssl-proxies/
+ssl-proxies-tomcat/
+test-utils/
