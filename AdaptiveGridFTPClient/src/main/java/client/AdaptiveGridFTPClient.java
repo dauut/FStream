@@ -60,6 +60,7 @@ public class AdaptiveGridFTPClient {
     public static void main(String[] args) throws Exception {
         AdaptiveGridFTPClient adaptiveGridFTPClient = new AdaptiveGridFTPClient();
         adaptiveGridFTPClient.parseArguments(args);
+        adaptiveGridFTPClient.initConnection();
         adaptiveGridFTPClient.lookForNewData();
         firstPassPast = true;
 
@@ -85,8 +86,7 @@ public class AdaptiveGridFTPClient {
         checkDataPeriodically.join();
 
     }
-
-    private XferList lookForNewData() {
+    public void initConnection(){
         transferTask = new Entry();
         transferTask.setSource(conf.source);
         transferTask.setDestination(conf.destination);
@@ -129,6 +129,9 @@ public class AdaptiveGridFTPClient {
         gridFTPClient.useOnlineTuning = ConfigurationParams.useOnlineTuning;
         gridFTPClient.setPerfFreq(conf.perfFreq);
         GridFTPClient.ftpClient.setEnableIntegrityVerification(conf.enableIntegrityVerification);
+
+    }
+    private XferList lookForNewData() {
 
         //Get metadata information of dataset
         XferList dataset = null;
