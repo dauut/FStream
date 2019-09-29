@@ -203,6 +203,7 @@ public class FTPClient {
             if (entry.dir) {
                 LOG.info("Creating directory " + entry.dpath);
                 cc.pipeMkdir(entry.dpath);
+                //cc.watchTransfer(null, null);
             }
         }
         return xl;

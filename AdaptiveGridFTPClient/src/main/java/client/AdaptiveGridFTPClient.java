@@ -9,6 +9,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import transfer_protocol.module.ChannelModule;
 import transfer_protocol.module.GridFTPClient;
 import transfer_protocol.util.XferList;
@@ -41,6 +43,9 @@ public class AdaptiveGridFTPClient {
     private static int TRANSFER_NUMBER = 1;
     private List<TunableParameters> staticTunableParams = new ArrayList<>();
     public boolean staticSettings = true;
+
+    private final static Logger debugLogger = LogManager.getLogger("reportsLogger");
+
 
     public AdaptiveGridFTPClient() {
         //initialize output streams for message logging
@@ -319,8 +324,8 @@ public class AdaptiveGridFTPClient {
                         GridFTPClient.ftpClient.channelList.add(GridFTPClient.TransferChannel.channelPairList.get(j));
                     }
                     GridFTPClient.ftpClient.transferList(GridFTPClient.TransferChannel.channelPairList.get(j));
-                    currentChannelId++;
                     System.out.println(" CHANNEL TRANSFER COMPLETED: " + currentChannelId);
+                    currentChannelId++;
                 }
             }
 
@@ -334,6 +339,9 @@ public class AdaptiveGridFTPClient {
                                         int channelId,
                                         FileCluster chunk,
                                         XferList.MlsxEntry firstFileToTransfer) {
+        //it optimized for 1 chunk for now.
+        // TODO: improve that for more than 1 chunk
+        debugLogger.debug("Channel configurations for new files------- ");
         TunableParameters params;
         if (staticSettings) {
             params = staticTunableParams.get(0);
@@ -351,6 +359,12 @@ public class AdaptiveGridFTPClient {
             cc.setID(channelId);
             cc.pipeTransfer(firstFileToTransfer);
             cc.inTransitFiles.add(firstFileToTransfer);
+            debugLogger.debug("Parallism: " + cc.parallelism+
+            " Pipelining: " + cc.pipelining+
+            " IntransitFile size: "+ cc.inTransitFiles.size());
+            if (cc.inTransitFiles.peek()!=null) {
+                debugLogger.debug("File Path: " + cc.inTransitFiles.peek().spath);
+            }
         } catch (Exception e) {
             System.out.println("Failed to setup new files channels. ");
             e.printStackTrace();

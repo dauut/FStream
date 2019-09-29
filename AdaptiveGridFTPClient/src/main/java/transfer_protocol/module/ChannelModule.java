@@ -654,11 +654,14 @@ public class ChannelModule {
         new File(path).mkdir();
       } else {
         dc.write("MKD", path);
+        Reply r = dc.read();
+        //System.out.println(r.getCode() + " ---- " + r.getMessage());
       }
     }
 
     // Prepare the channels to transfer an XferEntry.
     public void pipeTransfer(XferList.MlsxEntry e) {
+//        System.out.println("Piping " + e.spath + "->" + e.dpath);
       try {
         if (e.dir) {
           pipeMkdir(e.dpath());
