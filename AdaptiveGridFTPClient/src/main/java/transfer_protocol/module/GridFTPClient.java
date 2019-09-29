@@ -366,7 +366,11 @@ public class GridFTPClient implements Runnable {
                         synchronized (ftpClient.channelList) {
                             ftpClient.channelList.add(channel);
                         }
+                        long timeSpent = 0;
+                        long start;
+                        start = System.currentTimeMillis();
                         ftpClient.transferList(channel);
+
                     } else {
                         trial++;
 
