@@ -518,7 +518,7 @@ public class GridFTPClient implements Runnable {
                 }
                 estimatedCompletionTime = 8 * (xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput;
                 xl.estimatedFinishTime = estimatedCompletionTime;
-                System.out.println("Chunk " + i +
+                /*System.out.println("Chunk " + i +
                         "\t threads:" + xl.channels.size() +
                         "\t count:" + xl.count() +
                         "\t transferred:" + Utils.printSize(xl.totalTransferredSize, true) +
@@ -527,6 +527,7 @@ public class GridFTPClient implements Runnable {
                         "/" + Utils.printSize(xl.weighted_throughput, true) +
                         "\testimated time:" + df.format(estimatedCompletionTime) +
                         "\t onAir:" + xl.onAir);
+                 */
                 xl.instantTransferredSize = xl.totalTransferredSize;
             }
             estimatedCompletionTimes[i] = estimatedCompletionTime;

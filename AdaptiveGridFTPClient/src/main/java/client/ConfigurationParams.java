@@ -34,7 +34,7 @@ public class ConfigurationParams {
   boolean useDynamicScheduling = false;
 
   boolean useMaxCC = false;
-  public static int maximumChunks = 4;
+  public static int maximumChunks = 2;
 
   boolean enableIntegrityVerification = false;
 
