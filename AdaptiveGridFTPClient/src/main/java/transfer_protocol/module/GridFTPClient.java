@@ -308,6 +308,18 @@ public class GridFTPClient implements Runnable {
 //        }
 //        ftpClient.channelList.clear();
     }
+    public static void waitEndOfTransfer() {
+        // Check if all the files in all chunks are transferred
+        for (FileCluster fileCluster: ftpClient.fileClusters)
+            try {
+                while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
+                    Thread.sleep(100);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.exit(-1);
+            }
+    }
 
     public static class TransferChannel implements Runnable {
         final int doStriping;
