@@ -216,10 +216,12 @@ public class FTPClient {
         XferList fileList = cc.chunk.getRecords();
         updateOnAir(fileList, +1);
         // pipe transfer commands if ppq is enabled
+        LOG.info("Channel " + cc.getId() + " is starting to transfer files");
         for (int i = cc.inTransitFiles.size(); i < cc.getPipelining()+ 1; i++) {
             pullAndSendAFile(cc);
         }
         while (!cc.inTransitFiles.isEmpty()) {
+//        while (true) {
             fileList = cc.chunk.getRecords();
             // Read responses to piped commands.
             XferList.MlsxEntry e = cc.inTransitFiles.poll();
