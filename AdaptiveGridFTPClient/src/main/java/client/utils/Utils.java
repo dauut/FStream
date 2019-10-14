@@ -131,15 +131,17 @@ public class Utils {
                 continue;
             }
             Density density = Utils.findDensityOfFile(e.size(), bandwidth, maximumChunks);
-            try {
-                fileClusters.get(density.ordinal()).addRecord(e);
-            } catch (IndexOutOfBoundsException ex) {
-                //that's not a nice way to add but it works for now
-                ex.printStackTrace();
-                FileCluster p2 = new FileCluster();
-                fileClusters.add(p2);
-                fileClusters.get(density.ordinal()).addRecord(e);
+
+            if (density.ordinal() >= fileClusters.size()){
+                System.out.println("No chunks found for " + density.ordinal());
+                int remainClusters = density.ordinal() - fileClusters.size() + 1;
+                for (int i = 0;i< remainClusters;i++){
+                    FileCluster p2 = new FileCluster();
+                    fileClusters.add(p2);
+                }
             }
+
+            fileClusters.get(density.ordinal()).addRecord(e);
         }
 
 
