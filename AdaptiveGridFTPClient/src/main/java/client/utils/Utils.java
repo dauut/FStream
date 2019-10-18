@@ -8,9 +8,11 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import transfer_protocol.module.ChannelModule;
+import transfer_protocol.module.GridFTPClient;
 import transfer_protocol.util.XferList;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
@@ -118,13 +120,13 @@ public class Utils {
         if (currentChunks != null) {
             fileClusters = currentChunks;
         } else {
+            System.out.println("No current chunk. Chunks creating... ");
             fileClusters = new ArrayList<>();
             for (int i = 0; i < maximumChunks; i++) {
                 FileCluster p = new FileCluster();
                 fileClusters.add(p);
             }
         }
-
 
         for (XferList.MlsxEntry e : list) {
             if (e.dir) {
@@ -159,6 +161,18 @@ public class Utils {
                     + " \t total:" + Utils.printSize(fileClusters.get(i).getRecords().size(), true) + " Density:" +
                     chunk.getDensity());
         }
+        System.out.println("Chunk count = " + fileClusters.size());
+//        boolean isInChunk = false;
+//        for (FileCluster clientChunks: GridFTPClient.ftpClient.fileClusters){
+//            for (FileCluster chunk: fileClusters){
+//                if(chunk == clientChunks){
+//                    isInChunk = true;
+//                }
+//            }
+//            if(!isInChunk){
+//                GridFTPClient.ftpClient.fileClusters
+//            }
+//        }
         return fileClusters;
     }
 

@@ -17,6 +17,7 @@ import transfer_protocol.util.XferList;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -269,6 +270,8 @@ public class AdaptiveGridFTPClient {
 
         for (FileCluster chunk: chunks){
             chunk.getRecords().totalTransferredSize = 0;
+            System.out.println("Transfers completed remove chunks...");
+//            GridFTPClient.ftpClient.fileClusters.remove(chunk);
         }
 
         if (dataNotChangeCounter >= 200) {
@@ -283,7 +286,7 @@ public class AdaptiveGridFTPClient {
     private void addNewFilesToChunks() throws Exception {
         XferList newFiles = newDataset;
         long datasetSize = newFiles.size();
-        synchronized (chunks.get(0)) {
+        synchronized (chunks) {
             chunks = Utils.createFileClusters(newFiles, chunks, conf.bandwidth, conf.rtt, maximumChunks);
         }
 
@@ -305,7 +308,7 @@ public class AdaptiveGridFTPClient {
             for (int j = 0; j < estimatedParamsForChunks.length; j++) {
 
                 staticTunableParams.get(0).setPipelining(tunableParameters.getPipelining());
-
+                staticTunableParams.get(0).setConcurrency(tunableParameters.getConcurrency());
                 chunks.get(j).setTunableParameters(staticTunableParams.get(0));
 
                 //dynamic params set
@@ -327,14 +330,25 @@ public class AdaptiveGridFTPClient {
         long start = System.currentTimeMillis();
         long timeSpent =0 ;
         for (FileCluster chunk : chunks) {
+            System.out.println("New files transferring... Chunk = " + chunk.getDensity());
             XferList xl = chunk.getRecords();
             xl.initialSize = xl.size();
             synchronized (chunk) {
                 xl.updateDestinationPaths();
             }
+
+            if(!GridFTPClient.ftpClient.fileClusters.contains(chunk)){
+                System.out.println("Chunk is not in FTPCLIENT adding");
+                GridFTPClient.ftpClient.fileClusters.add(chunk);
+            }
+
+            for (ChannelModule.ChannelPair cc:GridFTPClient.TransferChannel.channelPairList){
+                cc.chunk = chunk;
+            }
+
             xl.channels = GridFTPClient.TransferChannel.channelPairList;
             chunk.isReadyToTransfer = true;
-            for (int i = 0; i < xl.channels.size(); i++) {
+            for (int i = 0;i<chunk.getTunableParameters().getConcurrency() ; i++) {
                 Runnable runs = new RunTransfers(xl.channels.get(i));
                 GridFTPClient.executor.submit(runs);
             }
@@ -344,7 +358,11 @@ public class AdaptiveGridFTPClient {
         timeSpent += ((System.currentTimeMillis() - start) / 1000.0);
         System.err.println("TRANSFER NUM = " + TRANSFER_NUMBER + " is COMPLETED! in " + timeSpent + " seconds.");
         debugLogger.debug(timeSpent + "\t" + (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)));
-
+        for (FileCluster chunk: chunks){
+            chunk.getRecords().totalTransferredSize = 0;
+            System.out.println("Transfers completed remove chunks2...");
+//            GridFTPClient.ftpClient.fileClusters.remove(chunk);
+        }
         TRANSFER_NUMBER++;
         checkNewData();
     }

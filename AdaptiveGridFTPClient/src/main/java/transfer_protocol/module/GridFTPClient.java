@@ -47,7 +47,7 @@ public class GridFTPClient implements Runnable {
     volatile int rv = -1;
     static int perfFreq = 3;
     public boolean useDynamicScheduling = false;
-    public boolean useOnlineTuning =  false;
+    public boolean useOnlineTuning =  true;
 
     private static final Log LOG = LogFactory.getLog(GridFTPClient.class);
 
@@ -733,6 +733,7 @@ public class GridFTPClient implements Runnable {
                 chunk.getTunableParameters().setParallelism(newParallelism);
                 chunk.clearTimeSeries();
             }
+
             if (Math.abs(newConcurrency - currentConcurrency) >= 2) {
                 System.out.println("New concurrency " + newConcurrency);
                 if (newConcurrency > currentConcurrency) {
