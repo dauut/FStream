@@ -23,7 +23,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static client.utils.Utils.getChannels;
 
@@ -31,8 +34,6 @@ public class GridFTPClient implements Runnable {
     public static FTPClient ftpClient;
     public static ExecutorService executor;
     public static Queue<InetAddress> sourceIpList, destinationIpList;
-
-
 
 
     static int fastChunkId = -1, slowChunkId = -1, period = 0;
@@ -47,7 +48,7 @@ public class GridFTPClient implements Runnable {
     volatile int rv = -1;
     static int perfFreq = 3;
     public boolean useDynamicScheduling = false;
-    public boolean useOnlineTuning =  true;
+    public boolean useOnlineTuning = true;
 
     private static final Log LOG = LogFactory.getLog(GridFTPClient.class);
 
@@ -63,7 +64,7 @@ public class GridFTPClient implements Runnable {
         executor = Executors.newFixedThreadPool(30);
     }
 
-    public void setPerfFreq (int perfFreq) {
+    public void setPerfFreq(int perfFreq) {
         this.perfFreq = perfFreq;
     }
 
@@ -75,6 +76,18 @@ public class GridFTPClient implements Runnable {
         channelPair.chunk = chunk;
         try {
             channelPair.setID(channelId);
+
+            if (chunk.getDensity().toString().equals("LARGE")) {
+                AdaptiveGridFTPClient.largeMarkedChannels.put(
+                        channelPair, AdaptiveGridFTPClient.largeMarkedChannels.getOrDefault(channelPair, true));
+            } else {
+                AdaptiveGridFTPClient.smallMarkedChannels.put(
+                        channelPair, AdaptiveGridFTPClient.smallMarkedChannels.getOrDefault(channelPair, true));
+            }
+
+
+            channelPair.setChunkType(chunk.getDensity().toString());
+            LOG.info("Channel = " + channelId + " marked as inUse..");
             if (params.getParallelism() > 1)
                 channelPair.setParallelism(params.getParallelism());
             channelPair.setPipelining(params.getPipelining());
@@ -235,7 +248,7 @@ public class GridFTPClient implements Runnable {
                 sourceIpList.add(inetAddress);
         }
         for (InetAddress inetAddress : destinationHostResolutionThread.getAllIPs()) {
-            if (inetAddress != null )
+            if (inetAddress != null)
                 destinationIpList.add(inetAddress);
         }
 
@@ -293,24 +306,25 @@ public class GridFTPClient implements Runnable {
 
     public void waitForTransferCompletion() {
         // Check if all the files in all chunks are transferred
-        for (FileCluster fileCluster: ftpClient.fileClusters)
-        try {
-            while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
-                Thread.sleep(100);
+        for (FileCluster fileCluster : ftpClient.fileClusters)
+            try {
+                while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
+                    Thread.sleep(100);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.exit(-1);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(-1);
-        }
         //Close all channels before exiting
 //        for (int i = 1; i < ftpClient.channelList.size(); i++) {
 //            ftpClient.channelList.get(i).close();
 //        }
 //        ftpClient.channelList.clear();
     }
+
     public static void waitEndOfTransfer() {
         // Check if all the files in all chunks are transferred
-        for (FileCluster fileCluster: ftpClient.fileClusters)
+        for (FileCluster fileCluster : ftpClient.fileClusters)
             try {
                 while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
                     Thread.sleep(100);
@@ -378,9 +392,6 @@ public class GridFTPClient implements Runnable {
                         synchronized (ftpClient.channelList) {
                             ftpClient.channelList.add(channel);
                         }
-                        long timeSpent = 0;
-                        long start;
-                        start = System.currentTimeMillis();
                         ftpClient.transferList(channel);
 
                     } else {
@@ -535,7 +546,7 @@ public class GridFTPClient implements Runnable {
                         "\t count:" + xl.count() +
                         "\t transferred:" + Utils.printSize(xl.totalTransferredSize, true) +
                         "/" + Utils.printSize(xl.initialSize, true) +
-                        "\t throughput:" +  Utils.printSize(xl.instant_throughput, false) +
+                        "\t throughput:" + Utils.printSize(xl.instant_throughput, false) +
                         "/" + Utils.printSize(xl.weighted_throughput, true) +
                         "\testimated time:" + df.format(estimatedCompletionTime) +
                         "\t onAir:" + xl.onAir);
@@ -543,7 +554,7 @@ public class GridFTPClient implements Runnable {
                 xl.instantTransferredSize = xl.totalTransferredSize;
             }
             estimatedCompletionTimes[i] = estimatedCompletionTime;
-            writer.write(timer + "\t" + xl.channels.size() + "\t" + (throughputInMbps)/(1000*1000.0) + "\n");
+            writer.write(timer + "\t" + xl.channels.size() + "\t" + (throughputInMbps) / (1000 * 1000.0) + "\n");
             writer.flush();
         }
         System.out.println("*******************");
@@ -606,7 +617,7 @@ public class GridFTPClient implements Runnable {
                         ChannelModule.ChannelPair transferringChannel = fastChunk.channels.get(fastChunk.channels.size() - 1);
                         transferringChannel.newChunk = ftpClient.fileClusters.get(curSlowChunkId);
                         transferringChannel.isConfigurationChanged = true;
-                        System.out.println("Chunk " + curFastChunkId + "*" + getChannels(fastChunk) +  " is giving channel " +
+                        System.out.println("Chunk " + curFastChunkId + "*" + getChannels(fastChunk) + " is giving channel " +
                                 transferringChannel.getId() + " to chunk " + curSlowChunkId + "*" + getChannels(slowChunk));
                     }
                     period = 0;
@@ -632,10 +643,10 @@ public class GridFTPClient implements Runnable {
     }
 
 
-
     public static class ModellingThread implements Runnable {
         public static Queue<ModellingThread.ModellingJob> jobQueue;
         private final int pastLimit = 4;
+
         public ModellingThread() {
             jobQueue = new ConcurrentLinkedQueue<>();
         }
@@ -656,7 +667,7 @@ public class GridFTPClient implements Runnable {
 
                 // If chunk is almost finished, don't update parameters as no gain will be achieved
                 XferList xl = chunk.getRecords();
-                if(xl.totalTransferredSize >= 0.9 * xl.initialSize || xl.count() <= 2) {
+                if (xl.totalTransferredSize >= 0.9 * xl.initialSize || xl.count() <= 2) {
                     return;
                 }
 
@@ -671,7 +682,7 @@ public class GridFTPClient implements Runnable {
                         .setBufferSize((int) AdaptiveGridFTPClient.transferTask.getBufferSize())
                         .build();
 
-                chunk.addToTimeSeries(tunableParametersEstimated, params[params.length-1]);
+                chunk.addToTimeSeries(tunableParametersEstimated, params[params.length - 1]);
                 System.out.println("New round of " + " estimated params: " + tunableParametersEstimated.toString() + " count:" + chunk.getCountOfSeries());
                 jobQueue.remove();
                 checkForParameterUpdate(chunk, tunableParametersUsed);
@@ -701,9 +712,9 @@ public class GridFTPClient implements Runnable {
             }
 
             int pastLimit = lastNEstimations.size();
-            int ccs[] =  new int[pastLimit];
-            int ps[] =  new int[pastLimit];
-            int ppqs[] =  new int[pastLimit];
+            int ccs[] = new int[pastLimit];
+            int ps[] = new int[pastLimit];
+            int ppqs[] = new int[pastLimit];
             for (int i = 0; i < pastLimit; i++) {
                 ccs[i] = lastNEstimations.get(i).getConcurrency();
                 ps[i] = lastNEstimations.get(i).getParallelism();
@@ -715,17 +726,17 @@ public class GridFTPClient implements Runnable {
             int newConcurrency = getUpdatedParameterValue(ccs, currentTunableParameters.getConcurrency());
             int newParallelism = getUpdatedParameterValue(ps, currentTunableParameters.getParallelism());
             int newPipelining = getUpdatedParameterValue(ppqs, currentTunableParameters.getPipelining());
-            System.out.println("New parameters estimated:\t" + newConcurrency + "-" + newParallelism + "-" + newPipelining );
+            System.out.println("New parameters estimated:\t" + newConcurrency + "-" + newParallelism + "-" + newPipelining);
 
             if (newPipelining != currentPipelining) {
-                System.out.println("New pipelining " + newPipelining );
+                System.out.println("New pipelining " + newPipelining);
                 chunk.getRecords().channels.forEach(channel -> channel.setPipelining(newPipelining));
                 chunk.getTunableParameters().setPipelining(newPipelining);
             }
 
             if (Math.abs(newParallelism - currentParallelism) >= 2 ||
-                    Math.max(newParallelism, currentParallelism) >= 2 * Math.min(newParallelism, currentParallelism))  {
-                System.out.println("New parallelism " + newParallelism );
+                    Math.max(newParallelism, currentParallelism) >= 2 * Math.min(newParallelism, currentParallelism)) {
+                System.out.println("New parallelism " + newParallelism);
                 for (ChannelModule.ChannelPair channel : chunk.getRecords().channels) {
                     channel.isConfigurationChanged = true;
                     channel.newChunk = chunk;
@@ -760,8 +771,7 @@ public class GridFTPClient implements Runnable {
                     }
                     System.out.println("New concurrency level became " + (newConcurrency - channelCountToAdd));
                     chunk.getTunableParameters().setConcurrency(newConcurrency - channelCountToAdd);
-                }
-                else {
+                } else {
                     int randMax = chunk.getRecords().channels.size();
                     for (int i = 0; i < currentConcurrency - newConcurrency; i++) {
                         int random = ThreadLocalRandom.current().nextInt(0, randMax--);
@@ -775,8 +785,8 @@ public class GridFTPClient implements Runnable {
             }
         }
 
-        int getUpdatedParameterValue (int []pastValues, int currentValue) {
-            System.out.println("Past values " + currentValue + ", "+ Arrays.toString(pastValues));
+        int getUpdatedParameterValue(int[] pastValues, int currentValue) {
+            System.out.println("Past values " + currentValue + ", " + Arrays.toString(pastValues));
 
             boolean isLarger = pastValues[0] > currentValue;
             boolean isAllLargeOrSmall = true;
@@ -790,11 +800,11 @@ public class GridFTPClient implements Runnable {
 
             if (isAllLargeOrSmall) {
                 int sum = 0;
-                for (int i = 0; i< pastValues.length; i++) {
+                for (int i = 0; i < pastValues.length; i++) {
                     sum += pastValues[i];
                 }
                 System.out.println("Sum: " + sum + " length " + pastValues.length);
-                return (int)Math.round(sum/(1.0 * pastValues.length));
+                return (int) Math.round(sum / (1.0 * pastValues.length));
             }
             return currentValue;
         }
@@ -804,7 +814,7 @@ public class GridFTPClient implements Runnable {
             private final TunableParameters tunableParameters;
             private final double sampleThroughput;
 
-            public ModellingJob (FileCluster chunk, TunableParameters tunableParameters, double sampleThroughput) {
+            public ModellingJob(FileCluster chunk, TunableParameters tunableParameters, double sampleThroughput) {
                 this.chunk = chunk;
                 this.tunableParameters = tunableParameters;
                 this.sampleThroughput = sampleThroughput;

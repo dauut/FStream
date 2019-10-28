@@ -409,6 +409,7 @@ public class ChannelModule {
     private boolean dataChannelReady = false;
     private int id;
     private boolean stripingEnabled = false;
+    private String chunkType;
     // Remote/other view of control channels.
     // rc is always remote, oc can be either remote or local.
     ControlChannel rc, oc;
@@ -460,6 +461,15 @@ public class ChannelModule {
 
     public void pipePassive() throws Exception {
       rc.write(rc.fc.isIPv6() ? "EPSV" : "PASV");
+    }
+
+
+    public String getChunkType() {
+      return chunkType;
+    }
+
+    public void setChunkType(String chunkType) {
+      this.chunkType = chunkType;
     }
 
     // Read and handle the response of a pipelined PASV.
