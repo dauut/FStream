@@ -76,7 +76,7 @@ public class GridFTPClient implements Runnable {
         channelPair.chunk = chunk;
         try {
             channelPair.setID(channelId);
-
+            AdaptiveGridFTPClient.inUseChannelCount++;
             if (chunk.getDensity().toString().equals("LARGE")) {
                 AdaptiveGridFTPClient.largeMarkedChannels.put(
                         channelPair, AdaptiveGridFTPClient.largeMarkedChannels.getOrDefault(channelPair, true));
@@ -84,8 +84,6 @@ public class GridFTPClient implements Runnable {
                 AdaptiveGridFTPClient.smallMarkedChannels.put(
                         channelPair, AdaptiveGridFTPClient.smallMarkedChannels.getOrDefault(channelPair, true));
             }
-
-
             channelPair.setChunkType(chunk.getDensity().toString());
             LOG.info("Channel = " + channelId + " marked as inUse..");
             if (params.getParallelism() > 1)
@@ -322,7 +320,7 @@ public class GridFTPClient implements Runnable {
 //        ftpClient.channelList.clear();
     }
 
-    public static void waitEndOfTransfer() {
+    public void waitEndOfTransfer() {
         // Check if all the files in all chunks are transferred
         for (FileCluster fileCluster : ftpClient.fileClusters)
             try {
