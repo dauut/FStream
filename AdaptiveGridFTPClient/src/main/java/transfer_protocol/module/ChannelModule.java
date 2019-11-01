@@ -176,8 +176,10 @@ public class ChannelModule {
           String fileName = m.getFileName();
           String type = m.get("type");
           String size = m.get("size");
-// check if we have files previous bulk
+          // check if we have files previous bulk
+          ;
           if (prevList != null && !prevList.contains(fileName)) {
+//            AdaptiveGridFTPClient.isNewFile = true;
             if (type.equals(org.globus.ftp.MlsxEntry.TYPE_FILE)) {
               xl.add(path + fileName, Long.parseLong(size));
             } else if (!fileName.equals(".") && !fileName.equals("..")) {

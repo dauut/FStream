@@ -5,6 +5,15 @@ public class SessionParameters {
     private int parallelism;
     private int pipelining;
     private int bufferSize;
+    private String chunkType;
+
+    public String getChunkType() {
+        return chunkType;
+    }
+
+    public void setChunkType(String chunkType) {
+        this.chunkType = chunkType;
+    }
 
     public int getConcurrency() {
         return concurrency;

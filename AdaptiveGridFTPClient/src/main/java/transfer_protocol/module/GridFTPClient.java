@@ -275,7 +275,9 @@ public class GridFTPClient implements Runnable {
         // may lead to assigning all files to one channel
         List<XferList.MlsxEntry> firstFilesToSend = Lists.newArrayListWithCapacity(concurrency);
         for (int i = 0; i < concurrency; i++) {
-            firstFilesToSend.add(fileList.pop());
+            XferList.MlsxEntry e = fileList.pop();
+//            System.err.println("First file to send : " + e.fileName);
+            firstFilesToSend.add(e);
         }
 
         // Create <concurrency> times channels and start them
@@ -304,7 +306,7 @@ public class GridFTPClient implements Runnable {
 
     public void waitForTransferCompletion() {
         // Check if all the files in all chunks are transferred
-        for (FileCluster fileCluster : ftpClient.fileClusters)
+        for (FileCluster fileCluster : ftpClient.fileClusters){
             try {
                 while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
                     Thread.sleep(100);
@@ -313,24 +315,13 @@ public class GridFTPClient implements Runnable {
                 e.printStackTrace();
                 System.exit(-1);
             }
+        }
+
         //Close all channels before exiting
 //        for (int i = 1; i < ftpClient.channelList.size(); i++) {
 //            ftpClient.channelList.get(i).close();
 //        }
 //        ftpClient.channelList.clear();
-    }
-
-    public void waitEndOfTransfer() {
-        // Check if all the files in all chunks are transferred
-        for (FileCluster fileCluster : ftpClient.fileClusters)
-            try {
-                while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
-                    Thread.sleep(100);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                System.exit(-1);
-            }
     }
 
     public static class TransferChannel implements Runnable {

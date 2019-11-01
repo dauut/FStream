@@ -4,7 +4,7 @@ import transfer_protocol.module.ChannelModule;
 import transfer_protocol.module.GridFTPClient;
 
 public class RunTransfers implements Runnable {
-    ChannelModule.ChannelPair cc;
+    private ChannelModule.ChannelPair cc;
 
     public RunTransfers(ChannelModule.ChannelPair cc){
         this.cc = cc;

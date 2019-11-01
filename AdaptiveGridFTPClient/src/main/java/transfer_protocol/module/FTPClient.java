@@ -277,7 +277,6 @@ public class FTPClient {
             if (cc.inTransitFiles.isEmpty()) {
                 //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +fileClusters.get(cc.xferListIndex).count());
 //                cc = findChunkInNeed(cc);
-                System.out.println("Release channel...");
                 AdaptiveGridFTPClient.inUseChannelCount--;
                 if (cc.getChunkType().equals("SMALL")) {
                     AdaptiveGridFTPClient.smallMarkedChannels.put(cc, false);
