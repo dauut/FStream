@@ -18,7 +18,7 @@ import java.util.List;
 // A custom extended GridFTPClient that implements some undocumented
 // operations and provides some more responsive transfer methods.
 public class FTPClient {
-
+    private HashSet<String> pipingPathSet = new HashSet<>();
     volatile boolean aborted = false;
     private FTPURI su, du;
     private TransferProgress progress = new TransferProgress();
@@ -89,7 +89,11 @@ public class FTPClient {
             while (currentPipelining < MAXIMUM_PIPELINING && !waiting.isEmpty()) {
                 String p = waiting.pop();
                 cc.pipePassive();
-                System.out.println("Piping  " + cmd + " " + path + p);
+                String fullPath = path + p;
+                if (!pipingPathSet.contains(fullPath)) {
+                    System.out.println("Piping  " + cmd + " " + path + p);
+                    pipingPathSet.add(fullPath);
+                }
                 cc.rc.write(cmd, path + p);
                 working.add(p);
                 currentPipelining++;
@@ -202,7 +206,7 @@ public class FTPClient {
         xl.updateDestinationPaths();
         for (XferList.MlsxEntry entry : xl.getFileList()) {
             if (entry.dir) {
-                LOG.info("Creating directory " + entry.dpath);
+//                LOG.info("Creating directory " + entry.dpath);
                 cc.pipeMkdir(entry.dpath);
                 //cc.watchTransfer(null, null);
             }
@@ -222,11 +226,10 @@ public class FTPClient {
             pullAndSendAFile(cc);
         }
         while (!cc.inTransitFiles.isEmpty()) {
-//        while (true) {
             fileList = cc.chunk.getRecords();
             // Read responses to piped commands.
             XferList.MlsxEntry e = cc.inTransitFiles.poll();
-            if (e.dir) {
+            if (e != null && e.dir) {
                 try {
                     if (!cc.dc.local) {
                         cc.dc.read();
@@ -243,31 +246,35 @@ public class FTPClient {
                 }
                 updateOnAir(fileList, -1);
 
-                if (cc.isConfigurationChanged && cc.inTransitFiles.isEmpty()) {
-                    if (cc.newChunk == null) {  // Closing this channel
-                        synchronized (fileList.channels) {
-                            fileList.channels.remove(cc);
-                        }
-                        System.out.println("Channel " + cc.getId() + " is closed");
-                        break;
-                    }
-                    System.out.println("Channel " + cc.getId() + " parallelism is being updated");
-                    cc = restartChannel(cc);
-                    if (cc == null) {
-                        return;
-                    }
-                    System.out.println("Channel " + cc.getId() + " parallelism is updated pipelining:" + cc.getPipelining());
-                    cc.isConfigurationChanged = false;
-
-                }
+//                if (cc.isConfigurationChanged && cc.inTransitFiles.isEmpty()) {
+//                    if (cc.newChunk == null) {  // Closing this channel
+//                        synchronized (fileList.channels) {
+//                            fileList.channels.remove(cc);
+//                        }
+//                        System.out.println("Channel " + cc.getId() + " is closed");
+//                        break;
+//                    }
+//                    System.out.println("Channel " + cc.getId() + " parallelism is being updated");
+//                    cc = restartChannel(cc);
+//                    if (cc == null) {
+//                        return;
+//                    }
+//                    System.out.println("Channel " + cc.getId() + " parallelism is updated pipelining:" + cc.getPipelining());
+//                    cc.isConfigurationChanged = false;
+//
+//                }
           /*
           else if (cc.isChunkChanged && cc.inTransitFiles.isEmpty()) {
             changeChunkOfChannel(cc);
           }
           */
-                else if (!cc.isConfigurationChanged) {
+//                else
+                if (!cc.isConfigurationChanged && !cc.isMarkedAsRemove()) {
                     for (int i = cc.inTransitFiles.size(); i < cc.getPipelining() + 1; i++) {
                         pullAndSendAFile(cc);
+                    }
+                    if (cc.isMarkedAsRemove()) {
+                        System.out.println("cc = " + cc.getId() + " Marked as remove... intransit size = " + cc.inTransitFiles.size());
                     }
                 }
             }
@@ -277,7 +284,7 @@ public class FTPClient {
             if (cc.inTransitFiles.isEmpty()) {
                 //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +fileClusters.get(cc.xferListIndex).count());
 //                cc = findChunkInNeed(cc);
-                AdaptiveGridFTPClient.inUseChannelCount--;
+                fileList.channels.remove(cc);
                 if (cc.getChunkType().equals("SMALL")) {
                     AdaptiveGridFTPClient.smallMarkedChannels.put(cc, false);
                 } else {
@@ -285,7 +292,7 @@ public class FTPClient {
                 }
 
 //                if (cc == null) {
-                    return;
+                return;
 //                }
             }
 

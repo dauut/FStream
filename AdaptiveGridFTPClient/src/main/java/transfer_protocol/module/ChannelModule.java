@@ -412,6 +412,7 @@ public class ChannelModule {
     private int id;
     private boolean stripingEnabled = false;
     private String chunkType;
+    private boolean markedAsRemove = false;
     // Remote/other view of control channels.
     // rc is always remote, oc can be either remote or local.
     ControlChannel rc, oc;
@@ -472,6 +473,14 @@ public class ChannelModule {
 
     public void setChunkType(String chunkType) {
       this.chunkType = chunkType;
+    }
+
+    public boolean isMarkedAsRemove() {
+      return markedAsRemove;
+    }
+
+    public void setMarkedAsRemove(boolean markedAsRemove) {
+      this.markedAsRemove = markedAsRemove;
     }
 
     // Read and handle the response of a pipelined PASV.
@@ -899,7 +908,7 @@ public class ChannelModule {
             prog.done(diff);
           }
         } catch (Exception e) {
-          // Couldn't get bytes transferred...
+          // Couldn't get bytes transferred...getMessage
         }
       }
     }

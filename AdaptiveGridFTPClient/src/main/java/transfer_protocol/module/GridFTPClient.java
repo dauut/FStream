@@ -76,7 +76,6 @@ public class GridFTPClient implements Runnable {
         channelPair.chunk = chunk;
         try {
             channelPair.setID(channelId);
-            AdaptiveGridFTPClient.inUseChannelCount++;
             if (chunk.getDensity().toString().equals("LARGE")) {
                 AdaptiveGridFTPClient.largeMarkedChannels.put(
                         channelPair, AdaptiveGridFTPClient.largeMarkedChannels.getOrDefault(channelPair, true));

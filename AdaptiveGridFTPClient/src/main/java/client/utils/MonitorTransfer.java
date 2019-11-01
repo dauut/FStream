@@ -20,8 +20,9 @@ public class MonitorTransfer extends Thread{
         long timespent = 0;
         for (FileCluster fileCluster : GridFTPClient.ftpClient.fileClusters){
             try {
+                Thread.sleep(10);
                 while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
-                    LOG.info(fileCluster.getRecords().totalTransferredSize + " " + fileCluster.getRecords().initialSize);
+                    LOG.info(Math.round(fileCluster.getRecords().totalTransferredSize) + " " + fileCluster.getRecords().initialSize);
                     Thread.sleep(400);
                 }
             } catch (Exception e) {
