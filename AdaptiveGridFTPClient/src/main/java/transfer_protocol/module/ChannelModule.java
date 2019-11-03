@@ -352,6 +352,11 @@ public class ChannelModule {
       } catch (Exception e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
+        if (r.getMessage()!=null){
+          System.out.print("cc.read() message  === " + r.getMessage() + " code = " + r.getCode());
+        }
+        System.out.println(" cc.read() code = " + r.getCode());
+
       }
       return r;
     }

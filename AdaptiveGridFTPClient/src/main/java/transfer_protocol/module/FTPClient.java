@@ -225,26 +225,27 @@ public class FTPClient {
         for (int i = cc.inTransitFiles.size(); i < cc.getPipelining() + 1; i++) {
             pullAndSendAFile(cc);
         }
-        while (!cc.inTransitFiles.isEmpty()) {
-            fileList = cc.chunk.getRecords();
-            // Read responses to piped commands.
-            XferList.MlsxEntry e = cc.inTransitFiles.poll();
-            if (e != null && e.dir) {
-                try {
-                    if (!cc.dc.local) {
-                        cc.dc.read();
+        synchronized (cc) { // I know it doesn't seem safe. but it is.
+            while (!cc.inTransitFiles.isEmpty()) {
+                fileList = cc.chunk.getRecords();
+                // Read responses to piped commands.
+                XferList.MlsxEntry e = cc.inTransitFiles.poll();
+                if (e != null && e.dir) {
+                    try {
+                        if (!cc.dc.local) {
+                            cc.dc.read();
+                        }
+                    } catch (Exception ex) {
                     }
-                } catch (Exception ex) {
-                }
-            } else {
-                ChannelModule.ProgressListener prog = new ChannelModule.ProgressListener(this);
-                cc.watchTransfer(prog, e);
-                if (e.len == -1) {
-                    updateChunk(fileList, e.size - prog.last_bytes);
                 } else {
-                    updateChunk(fileList, e.len - prog.last_bytes);
-                }
-                updateOnAir(fileList, -1);
+                    ChannelModule.ProgressListener prog = new ChannelModule.ProgressListener(this);
+                    cc.watchTransfer(prog, e);
+                    if (e.len == -1) {
+                        updateChunk(fileList, e.size - prog.last_bytes);
+                    } else {
+                        updateChunk(fileList, e.len - prog.last_bytes);
+                    }
+                    updateOnAir(fileList, -1);
 
 //                if (cc.isConfigurationChanged && cc.inTransitFiles.isEmpty()) {
 //                    if (cc.newChunk == null) {  // Closing this channel
@@ -269,39 +270,44 @@ public class FTPClient {
           }
           */
 //                else
-                if (!cc.isConfigurationChanged && !cc.isMarkedAsRemove()) {
-                    for (int i = cc.inTransitFiles.size(); i < cc.getPipelining() + 1; i++) {
-                        pullAndSendAFile(cc);
-                    }
-                    if (cc.isMarkedAsRemove()) {
-                        System.out.println("cc = " + cc.getId() + " Marked as remove... intransit size = " + cc.inTransitFiles.size());
+                    if (!cc.isConfigurationChanged && !cc.isMarkedAsRemove()) {
+                        for (int i = cc.inTransitFiles.size(); i < cc.getPipelining() + 1; i++) {
+                            pullAndSendAFile(cc);
+                        }
+                        if (cc.isMarkedAsRemove()) {
+                            System.out.println("cc = " + cc.getId() + " Marked as remove... intransit size = " + cc.inTransitFiles.size());
+                        }
                     }
                 }
-            }
-            // The transfer of the channel's assigned fileClusters is completed.
-            // Check if other fileClusters have any outstanding files. If so, help!
+                // The transfer of the channel's assigned fileClusters is completed.
+                // Check if other fileClusters have any outstanding files. If so, help!
 
-            if (cc.inTransitFiles.isEmpty()) {
-                //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +fileClusters.get(cc.xferListIndex).count());
+                if (cc.inTransitFiles.isEmpty()) {
+                    //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +fileClusters.get(cc.xferListIndex).count());
 //                cc = findChunkInNeed(cc);
-                fileList.channels.remove(cc);
-                if (cc.getChunkType().equals("SMALL")) {
-                    AdaptiveGridFTPClient.smallMarkedChannels.put(cc, false);
-                } else {
-                    AdaptiveGridFTPClient.largeMarkedChannels.put(cc, false);
-                }
+                    System.out.println("Transfer completed in channel : " + cc.getId() + " for " + cc.chunk.getDensity().toString() + " chunk. removing from channel list.");
+                    fileList.channels.remove(cc);
+                    AdaptiveGridFTPClient.channelInUse.remove(cc);
+
+                    if (cc.getChunkType().equals("SMALL")) {
+                        AdaptiveGridFTPClient.smallMarkedChannels.put(cc, false);
+                    } else {
+                        AdaptiveGridFTPClient.largeMarkedChannels.put(cc, false);
+                    }
 
 //                if (cc == null) {
-                return;
+                    return;
 //                }
-            }
+                }
 
+            }
         }
-        if (cc == null) {
-            System.out.println("Channel " + cc.getId() + " is null");
-        } else {
-//            cc.close();
-        }
+
+//        if (cc == null) {
+//            System.out.println("Channel " + cc.getId() + " is null");
+//        } else {
+////            cc.close();
+//        }
     }
 
     ChannelModule.ChannelPair restartChannel(ChannelModule.ChannelPair oldChannel) {

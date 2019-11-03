@@ -1,37 +1,38 @@
 package client.utils;
 
 import client.AdaptiveGridFTPClient;
-import client.FileCluster;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import transfer_protocol.module.GridFTPClient;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
-public class MonitorTransfer extends Thread{
-    AdaptiveGridFTPClient main;
+public class MonitorTransfer extends Thread {
+    private AdaptiveGridFTPClient main;
     private static final Log LOG = LogFactory.getLog(MonitorTransfer.class);
+    private final static Logger debugLogger = LogManager.getLogger("reportsLogger");
 
-    public MonitorTransfer(AdaptiveGridFTPClient main){
+    public MonitorTransfer(AdaptiveGridFTPClient main) {
         this.main = main;
     }
 
-    public void run(){
+    public void run() {
         System.err.println("Monitor transfer runs.");
         long start = System.currentTimeMillis();
-        long timespent = 0;
-        for (FileCluster fileCluster : GridFTPClient.ftpClient.fileClusters){
+        long timeSpent = 0;
+        while (AdaptiveGridFTPClient.channelInUse.size() != 0) {
             try {
-                Thread.sleep(10);
-                while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
-                    LOG.info(Math.round(fileCluster.getRecords().totalTransferredSize) + " " + fileCluster.getRecords().initialSize);
-                    Thread.sleep(400);
-                }
-            } catch (Exception e) {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
                 e.printStackTrace();
-                System.exit(-1);
             }
         }
-        timespent+=(System.currentTimeMillis() - start) / 1000;
-        System.err.println("Transfer:" + AdaptiveGridFTPClient.TRANSFER_NUMBER + " completed in: " + timespent);
+        System.out.println("Monitored datasize = " + AdaptiveGridFTPClient.dataSizeofCurrentTransfer);
+        timeSpent += (System.currentTimeMillis() - start) / 1000;
+        System.err.println("Transfer:" + AdaptiveGridFTPClient.TRANSFER_NUMBER + " completed in: " + timeSpent);
+        debugLogger.debug(timeSpent + "\t" + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
+                / (timeSpent * (1000.0 * 1000)));
+        LOG.info("Throughput : " + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
+                / (timeSpent * (1000.0 * 1000)) + " Time: " + timeSpent);
         AdaptiveGridFTPClient.isTransfersCopmletedMap.put(AdaptiveGridFTPClient.TRANSFER_NUMBER, true);
         System.out.println("Remove transfer information..");
         main.cleanCurrentTransferInformation();
