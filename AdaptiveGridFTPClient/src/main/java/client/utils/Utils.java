@@ -120,7 +120,7 @@ public class Utils {
         if (currentChunks != null) {
             fileClusters = currentChunks;
         } else {
-            System.out.println("No current chunk. Chunks creating... ");
+//            System.out.println("No current chunk. Chunks creating... ");
             fileClusters = new ArrayList<>();
             for (int i = 0; i < maximumChunks; i++) {
                 FileCluster p = new FileCluster();

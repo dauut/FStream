@@ -11,6 +11,7 @@ import transfer_protocol.util.StorkUtil;
 import transfer_protocol.util.TransferProgress;
 import transfer_protocol.util.XferList;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -225,89 +226,52 @@ public class FTPClient {
         for (int i = cc.inTransitFiles.size(); i < cc.getPipelining() + 1; i++) {
             pullAndSendAFile(cc);
         }
-        synchronized (cc) { // I know it doesn't seem safe. but it is.
-            while (!cc.inTransitFiles.isEmpty()) {
-                fileList = cc.chunk.getRecords();
-                // Read responses to piped commands.
-                XferList.MlsxEntry e = cc.inTransitFiles.poll();
-                if (e != null && e.dir) {
-                    try {
-                        if (!cc.dc.local) {
-                            cc.dc.read();
-                        }
-                    } catch (Exception ex) {
+        while (!cc.inTransitFiles.isEmpty()) {
+            fileList = cc.chunk.getRecords();
+            // Read responses to piped commands.
+            XferList.MlsxEntry e = cc.inTransitFiles.poll();
+            if (e != null && e.dir) {
+                try {
+                    if (!cc.dc.local) {
+                        cc.dc.read();
                     }
+                } catch (Exception ex) {
+                }
+            } else {
+                ChannelModule.ProgressListener prog = new ChannelModule.ProgressListener(this);
+                cc.watchTransfer(prog, e);
+                if (e.len == -1) {
+                    updateChunk(fileList, e.size - prog.last_bytes);
                 } else {
-                    ChannelModule.ProgressListener prog = new ChannelModule.ProgressListener(this);
-                    cc.watchTransfer(prog, e);
-                    if (e.len == -1) {
-                        updateChunk(fileList, e.size - prog.last_bytes);
-                    } else {
-                        updateChunk(fileList, e.len - prog.last_bytes);
-                    }
-                    updateOnAir(fileList, -1);
-
-//                if (cc.isConfigurationChanged && cc.inTransitFiles.isEmpty()) {
-//                    if (cc.newChunk == null) {  // Closing this channel
-//                        synchronized (fileList.channels) {
-//                            fileList.channels.remove(cc);
-//                        }
-//                        System.out.println("Channel " + cc.getId() + " is closed");
-//                        break;
-//                    }
-//                    System.out.println("Channel " + cc.getId() + " parallelism is being updated");
-//                    cc = restartChannel(cc);
-//                    if (cc == null) {
-//                        return;
-//                    }
-//                    System.out.println("Channel " + cc.getId() + " parallelism is updated pipelining:" + cc.getPipelining());
-//                    cc.isConfigurationChanged = false;
-//
-//                }
-          /*
-          else if (cc.isChunkChanged && cc.inTransitFiles.isEmpty()) {
-            changeChunkOfChannel(cc);
-          }
-          */
-//                else
-                    if (!cc.isConfigurationChanged && !cc.isMarkedAsRemove()) {
-                        for (int i = cc.inTransitFiles.size(); i < cc.getPipelining() + 1; i++) {
-                            pullAndSendAFile(cc);
-                        }
-                        if (cc.isMarkedAsRemove()) {
-                            System.out.println("cc = " + cc.getId() + " Marked as remove... intransit size = " + cc.inTransitFiles.size());
-                        }
+                    updateChunk(fileList, e.len - prog.last_bytes);
+                }
+                updateOnAir(fileList, -1);
+                if (!cc.isConfigurationChanged && !cc.isMarkedAsRemove()) {
+                    for (int i = cc.inTransitFiles.size(); i < cc.getPipelining() + 1; i++) {
+                        pullAndSendAFile(cc);
                     }
                 }
-                // The transfer of the channel's assigned fileClusters is completed.
-                // Check if other fileClusters have any outstanding files. If so, help!
+            }
+            // The transfer of the channel's assigned fileClusters is completed.
+            // Check if other fileClusters have any outstanding files. If so, help!
 
-                if (cc.inTransitFiles.isEmpty()) {
-                    //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +fileClusters.get(cc.xferListIndex).count());
-//                cc = findChunkInNeed(cc);
-                    System.out.println("Transfer completed in channel : " + cc.getId() + " for " + cc.chunk.getDensity().toString() + " chunk. removing from channel list.");
-                    fileList.channels.remove(cc);
-                    AdaptiveGridFTPClient.channelInUse.remove(cc);
+            if (cc.inTransitFiles.isEmpty()) {
+                //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +fileClusters.get(cc.xferListIndex).count());
+                LOG.info("Transfer" + AdaptiveGridFTPClient.TRANSFER_NUMBER + "completed in channel : "
+                        + cc.getId() + " for " + cc.chunk.getDensity().toString() + " chunk. removing from channel list.");
+                fileList.channels.remove(cc);
+                AdaptiveGridFTPClient.channelInUse.remove(cc);
 
-                    if (cc.getChunkType().equals("SMALL")) {
-                        AdaptiveGridFTPClient.smallMarkedChannels.put(cc, false);
-                    } else {
-                        AdaptiveGridFTPClient.largeMarkedChannels.put(cc, false);
-                    }
-
-//                if (cc == null) {
-                    return;
-//                }
+                if (cc.getChunkType().equals("SMALL")) {
+                    AdaptiveGridFTPClient.smallMarkedChannels.put(cc, false);
+                } else {
+                    AdaptiveGridFTPClient.largeMarkedChannels.put(cc, false);
                 }
-
+                return;
             }
         }
 
-//        if (cc == null) {
-//            System.out.println("Channel " + cc.getId() + " is null");
-//        } else {
-////            cc.close();
-//        }
+
     }
 
     ChannelModule.ChannelPair restartChannel(ChannelModule.ChannelPair oldChannel) {
@@ -428,4 +392,44 @@ public class FTPClient {
         }
         return null;
     }
+
+    public void checkEstimatedTimeForParallelismChange(FileCluster chunk, GridFTPClient gridFTPClient) {
+        System.out.println("Check estimate times starts. Will waiting for 5 secs...");
+
+        if (chunk.getRecords().estimatedFinishTime != Integer.MAX_VALUE /*&&
+            chunk.getRecords().estimatedFinishTime > 200*/) {
+            System.err.println("Estimated time = " + chunk.getRecords().estimatedFinishTime
+                    + " " + chunk.getRecords().density.toString()
+                    + " chunk parallism change required. ");
+
+            ArrayList<ChannelModule.ChannelPair> list = new ArrayList<>();
+            for (int i = 0; i < chunk.getRecords().channels.size(); i++) {
+                System.out.println("Channel = " + chunk.getRecords().channels.get(0).getId() + " has intransit = " + chunk.getRecords().channels.get(0).inTransitFiles.size());
+                System.out.println("Channel = " + chunk.getRecords().channels.get(0).getId() + " is going to restart...");
+                synchronized (chunk.getRecords().channels.get(i)) {
+                    System.out.println("[SYNC] Channel = " + chunk.getRecords().channels.get(i) + " going to mark as restart..");
+                    chunk.getRecords().channels.get(i).setMarkedAsRemove(true);
+                    list.add(chunk.getRecords().channels.get(i));
+                }
+            }
+            while (list.size() != 0) {
+                if (list.get(0).inTransitFiles.size() == 0) {
+                    AdaptiveGridFTPClient.smallMarkedChannels.remove(list.get(0));
+                    AdaptiveGridFTPClient.largeMarkedChannels.remove(list.get(0));
+                    list.remove(0);
+                }
+            }
+            System.err.println("CHANNEL SIZE AFTER REMOVE = " + chunk.getRecords().channels.size());
+            if (chunk.getRecords().channels.size() == 0) {
+                System.out.println("Channel size is 0 now. Run with new channels.. ");
+                gridFTPClient.runTransfer(chunk);
+            } else {
+                System.out.println("Chunk still has some channels so don;t know what to do .. ");
+            }
+
+        } else {
+            System.out.println("No need to change parallelism for  " + chunk.getDensity().toString());
+        }
+    }
+
 }
