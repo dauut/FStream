@@ -38,7 +38,7 @@ public class GridFTPClient implements Runnable {
 
     static int fastChunkId = -1, slowChunkId = -1, period = 0;
     URI usu = null, udu = null;
-    static FTPURI su = null, du = null;
+    public static FTPURI su = null, du = null;
 
     Thread connectionThread, transferMonitorThread;
     HostResolution sourceHostResolutionThread, destinationHostResolutionThread;

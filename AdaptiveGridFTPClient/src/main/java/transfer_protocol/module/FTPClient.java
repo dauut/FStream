@@ -274,7 +274,7 @@ public class FTPClient {
 
     }
 
-    ChannelModule.ChannelPair restartChannel(ChannelModule.ChannelPair oldChannel) {
+    public ChannelModule.ChannelPair restartChannel(ChannelModule.ChannelPair oldChannel) {
         System.out.println("Updating channel " + oldChannel.getId() + " parallelism to " +
                 oldChannel.newChunk.getTunableParameters().getParallelism());
         XferList oldFileList = oldChannel.chunk.getRecords();
@@ -396,40 +396,40 @@ public class FTPClient {
     public void checkEstimatedTimeForParallelismChange(FileCluster chunk, GridFTPClient gridFTPClient) {
         System.out.println("Check estimate times starts. Will waiting for 5 secs...");
 
-        if (chunk.getRecords().estimatedFinishTime != Integer.MAX_VALUE /*&&
-            chunk.getRecords().estimatedFinishTime > 200*/) {
-            System.err.println("Estimated time = " + chunk.getRecords().estimatedFinishTime
-                    + " " + chunk.getRecords().density.toString()
-                    + " chunk parallism change required. ");
+//        if (chunk.getRecords().estimatedFinishTime != Integer.MAX_VALUE /*&&
+//            chunk.getRecords().estimatedFinishTime > 200*/) {
+        System.err.println("Estimated time = " + chunk.getRecords().estimatedFinishTime
+                + " " + chunk.getRecords().density.toString()
+                + " chunk parallism change required. ");
 
-            ArrayList<ChannelModule.ChannelPair> list = new ArrayList<>();
-            for (int i = 0; i < chunk.getRecords().channels.size(); i++) {
-                System.out.println("Channel = " + chunk.getRecords().channels.get(0).getId() + " has intransit = " + chunk.getRecords().channels.get(0).inTransitFiles.size());
-                System.out.println("Channel = " + chunk.getRecords().channels.get(0).getId() + " is going to restart...");
-                synchronized (chunk.getRecords().channels.get(i)) {
-                    System.out.println("[SYNC] Channel = " + chunk.getRecords().channels.get(i) + " going to mark as restart..");
-                    chunk.getRecords().channels.get(i).setMarkedAsRemove(true);
-                    list.add(chunk.getRecords().channels.get(i));
-                }
+        ArrayList<ChannelModule.ChannelPair> list = new ArrayList<>();
+        for (int i = 0; i < chunk.getRecords().channels.size(); i++) {
+            System.out.println("Channel = " + chunk.getRecords().channels.get(0).getId() + " has intransit = " + chunk.getRecords().channels.get(0).inTransitFiles.size());
+            System.out.println("Channel = " + chunk.getRecords().channels.get(0).getId() + " is going to restart...");
+            synchronized (chunk.getRecords().channels.get(i)) {
+                System.out.println("[SYNC] Channel = " + chunk.getRecords().channels.get(i) + " going to mark as restart..");
+                chunk.getRecords().channels.get(i).setMarkedAsRemove(true);
+                list.add(chunk.getRecords().channels.get(i));
             }
-            while (list.size() != 0) {
-                if (list.get(0).inTransitFiles.size() == 0) {
-                    AdaptiveGridFTPClient.smallMarkedChannels.remove(list.get(0));
-                    AdaptiveGridFTPClient.largeMarkedChannels.remove(list.get(0));
-                    list.remove(0);
-                }
-            }
-            System.err.println("CHANNEL SIZE AFTER REMOVE = " + chunk.getRecords().channels.size());
-            if (chunk.getRecords().channels.size() == 0) {
-                System.out.println("Channel size is 0 now. Run with new channels.. ");
-                gridFTPClient.runTransfer(chunk);
-            } else {
-                System.out.println("Chunk still has some channels so don;t know what to do .. ");
-            }
-
-        } else {
-            System.out.println("No need to change parallelism for  " + chunk.getDensity().toString());
         }
+        while (list.size() != 0) {
+            if (list.get(0).inTransitFiles.size() == 0) {
+                AdaptiveGridFTPClient.smallMarkedChannels.remove(list.get(0));
+                AdaptiveGridFTPClient.largeMarkedChannels.remove(list.get(0));
+                list.remove(0);
+            }
+        }
+        System.err.println("CHANNEL SIZE AFTER REMOVE = " + chunk.getRecords().channels.size());
+        if (chunk.getRecords().channels.size() == 0) {
+            System.out.println("Channel size is 0 now. Run with new channels.. ");
+            gridFTPClient.runTransfer(chunk);
+        } else {
+            System.out.println("Chunk still has some channels so don;t know what to do .. ");
+        }
+
+//        } else {
+//            System.out.println("No need to change parallelism for  " + chunk.getDensity().toString());
+//        }
     }
 
 }
