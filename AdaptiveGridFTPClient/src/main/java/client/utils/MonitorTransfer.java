@@ -28,7 +28,9 @@ public class MonitorTransfer extends Thread {
         }
         System.out.println("Monitored datasize = " + AdaptiveGridFTPClient.dataSizeofCurrentTransfer);
         timeSpent += (System.currentTimeMillis() - start) / 1000;
-        System.err.println("Transfer:" + AdaptiveGridFTPClient.TRANSFER_NUMBER + " completed in: " + timeSpent);
+        System.err.println("Transfer:" + AdaptiveGridFTPClient.TRANSFER_NUMBER + " completed in: " + timeSpent
+                + " throughput: " + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
+                / (timeSpent * (1000.0 * 1000)));
         debugLogger.debug(timeSpent + "\t" + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
                 / (timeSpent * (1000.0 * 1000)));
         LOG.info("Throughput : " + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
