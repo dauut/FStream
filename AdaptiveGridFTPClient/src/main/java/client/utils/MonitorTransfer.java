@@ -37,8 +37,8 @@ public class MonitorTransfer extends Thread {
                 / (timeSpent * (1000.0 * 1000)) + " Time: " + timeSpent);
         AdaptiveGridFTPClient.isTransfersCopmletedMap.put(AdaptiveGridFTPClient.TRANSFER_NUMBER, true);
         System.out.println("Remove transfer information..");
-        main.cleanCurrentTransferInformation();
         System.out.println("Cleaner done!");
         AdaptiveGridFTPClient.TRANSFER_NUMBER++;
+        main.cleanCurrentTransferInformation();
     }
 }

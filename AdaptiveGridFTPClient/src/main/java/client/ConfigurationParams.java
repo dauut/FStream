@@ -23,6 +23,7 @@ public class ConfigurationParams {
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
 
   boolean channelLevelDebug = false;
+  boolean isStaticTransfer = false;
   int perfFreq = 3;
 
   String proxyFile;
@@ -232,6 +233,9 @@ public class ConfigurationParams {
       case "-enable-channel-debug":
         channelLevelDebug = true;
         usedSecondArgument = false;
+        break;
+      case "-transfer-type-static":
+        isStaticTransfer = true;
         break;
       default:
         System.err.println("Unrecognized input parameter " + config);
