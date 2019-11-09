@@ -83,6 +83,7 @@ public class GridFTPClient implements Runnable {
                 AdaptiveGridFTPClient.smallMarkedChannels.put(
                         channelPair, AdaptiveGridFTPClient.smallMarkedChannels.getOrDefault(channelPair, true));
             }
+            AdaptiveGridFTPClient.channelsWithParallelismCountMap.put(channelPair.parallelism, channelPair);
             channelPair.setChunkType(chunk.getDensity().toString());
             LOG.info("Channel = " + channelId + " marked as inUse..");
             if (params.getParallelism() > 1)
@@ -496,14 +497,14 @@ public class GridFTPClient implements Runnable {
                     //xl.instant_throughput = 0;
                     estimatedCompletionTime = ((xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput) - xl.interval;
                     xl.interval += interval;
-                    System.out.println("Chunk " + i +
+                    System.out.println("Chunk " + i + " " + chunk.getDensity().toString()+
                             "\t threads:" + xl.channels.size() +
                             "\t count:" + xl.count() +
                             "\t total:" + Utils.printSize(xl.size(), true) +
                             "\t interval:" + xl.interval +
                             "\t onAir:" + xl.onAir);
                 } else { // This chunk is active but has not transferred any data yet
-                    System.out.println("Chunk " + i +
+                    System.out.println("Chunk " + i + " " + chunk.getDensity().toString()+
                             "\t threads:" + xl.channels.size() +
                             "\t count:" + xl.count() +
                             "\t total:" + Utils.printSize(xl.size(), true)
@@ -529,7 +530,7 @@ public class GridFTPClient implements Runnable {
                 }
                 estimatedCompletionTime = 8 * (xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput;
                 xl.estimatedFinishTime = estimatedCompletionTime;
-                System.out.println("Chunk " + i +
+                System.out.println("Chunk " + i + " " + chunk.getDensity().toString()+
                         "\t threads:" + xl.channels.size() +
                         "\t count:" + xl.count() +
                         "\t transferred:" + Utils.printSize(xl.totalTransferredSize, true) +

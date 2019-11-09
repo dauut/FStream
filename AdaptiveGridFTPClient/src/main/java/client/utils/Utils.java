@@ -119,8 +119,22 @@ public class Utils {
         ArrayList<FileCluster> fileClusters;
         if (currentChunks != null) {
             fileClusters = currentChunks;
+            // if we have only one chunk instead of two
+            // create and insert the missing one
+            // if it is unnecessary then it will merge eventually.
+            // it is easier to do it here then later.
+            // This part won't support the more than 2 chunks.
+            if (fileClusters.size() == 1){
+                String cType = fileClusters.get(0).getDensity().toString();
+                if (cType.equals("SMALL")){
+                    FileCluster p = new FileCluster();
+                    fileClusters.add(p);
+                }else{
+                    FileCluster p = new FileCluster();
+                    fileClusters.add(0,p);
+                }
+            }
         } else {
-//            System.out.println("No current chunk. Chunks creating... ");
             fileClusters = new ArrayList<>();
             for (int i = 0; i < maximumChunks; i++) {
                 FileCluster p = new FileCluster();
@@ -133,15 +147,6 @@ public class Utils {
                 continue;
             }
             Density density = Utils.findDensityOfFile(e.size(), bandwidth, maximumChunks);
-
-            if (density.ordinal() >= fileClusters.size()){
-                System.out.println("No chunks found for " + density.ordinal());
-                int remainClusters = density.ordinal() - fileClusters.size() + 1;
-                for (int i = 0;i< remainClusters;i++){
-                    FileCluster p2 = new FileCluster();
-                    fileClusters.add(p2);
-                }
-            }
 
             fileClusters.get(density.ordinal()).addRecord(e);
         }
@@ -161,7 +166,7 @@ public class Utils {
                     + " \t total:" + Utils.printSize(fileClusters.get(i).getRecords().size(), true) + " Density:" +
                     chunk.getDensity());
         }
-        System.out.println("Chunk count = " + fileClusters.size());
+//        System.out.println("Chunk count = " + fileClusters.size());
 //        boolean isInChunk = false;
 //        for (FileCluster clientChunks: GridFTPClient.ftpClient.fileClusters){
 //            for (FileCluster chunk: fileClusters){
