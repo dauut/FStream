@@ -1,7 +1,12 @@
 ## AdaptiveGridFTPClientStream
 
 ### Application level throughput optimization. 
-The project goal is to predict end-to-end stream file transfer optimization based on background traffic information. To accomplish this, I am using parameters like real-time data throughput, historical information of throughputs, and prediction models. Thus, I can tune application-level data transfer parameters like parallelism, pipelining, and concurrency. I am using data chunks and transfer channels via multithreading. Also, I am computing throughput rate and optimize the parameters. The transfers are accomplishing between XSede(Extreme Science and Engineering Discovery Environment) Linux supercomputers via XSede API.
+Master Thesis Project: High-performance data transfer optimization via dynamic settings. Developed a system that performs application-
+level changes on the network to achieve high and stable throughput during file transfers. The system adapts pipelining,
+parallelism, and concurrency parameters to file chunks characteristics like size and file count. Initial results show that the
+algorithm lowers network overhead about 30% - 40% with at most 10% throughput decrease. The project developed as a
+Java multithreading application. Also, I use XSede GridFTP and JGlobus API, and supercomputers.
+
 
 
 ### Project structure
