@@ -11,7 +11,7 @@ Java multithreading application. Also, I use XSede GridFTP and JGlobus API, and 
 
 ### Project structure
 ```
-.
+.AdaptiveGridFTPClient/
 ├── src                              # Source files 
 |    ├── main                
 |    |    ├── shell-scripts            # helper scritps
