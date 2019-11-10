@@ -83,7 +83,8 @@ public class GridFTPClient implements Runnable {
                 AdaptiveGridFTPClient.smallMarkedChannels.put(
                         channelPair, AdaptiveGridFTPClient.smallMarkedChannels.getOrDefault(channelPair, true));
             }
-            AdaptiveGridFTPClient.channelsWithParallelismCountMap.put(channelPair.parallelism, channelPair);
+
+
             channelPair.setChunkType(chunk.getDensity().toString());
             LOG.info("Channel = " + channelId + " marked as inUse..");
             if (params.getParallelism() > 1)
@@ -91,6 +92,13 @@ public class GridFTPClient implements Runnable {
             channelPair.setPipelining(params.getPipelining());
             channelPair.setBufferSize(params.getBufferSize());
             channelPair.setPerfFreq(perfFreq);
+            if (!AdaptiveGridFTPClient.channelsWithParallelismCountMap.containsKey(channelPair.parallelism)){
+                ArrayList<ChannelModule.ChannelPair> channels = new ArrayList<>();
+                channels.add(channelPair);
+                AdaptiveGridFTPClient.channelsWithParallelismCountMap.put(channelPair.parallelism,channels);
+            }else{
+                AdaptiveGridFTPClient.channelsWithParallelismCountMap.get(channelPair.parallelism).add(channelPair);
+            }
             if (!channelPair.isDataChannelReady()) {
                 if (channelPair.dc.local || !channelPair.gridftp) {
                     channelPair.setTypeAndMode('I', 'S');
@@ -281,6 +289,11 @@ public class GridFTPClient implements Runnable {
         }
 
         // Create <concurrency> times channels and start them
+
+        if (!ConfigurationParams.isStaticTransfer){
+            concurrency = AdaptiveGridFTPClient.sessionParametersMap.get(fileCluster.getDensity().toString()).getConcurrency();
+        }
+
         for (int i = 0; i < concurrency; i++) {
             XferList.MlsxEntry firstFile = synchronizedPop(firstFilesToSend);
             Runnable transferChannel = new TransferChannel(fileCluster, i, firstFile);

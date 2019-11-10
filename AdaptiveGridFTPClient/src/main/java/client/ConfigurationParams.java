@@ -23,7 +23,7 @@ public class ConfigurationParams {
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
 
   boolean channelLevelDebug = false;
-  boolean isStaticTransfer = false;
+  public static boolean isStaticTransfer = false;
   int perfFreq = 3;
 
   String proxyFile;
@@ -234,7 +234,7 @@ public class ConfigurationParams {
         channelLevelDebug = true;
         usedSecondArgument = false;
         break;
-      case "-transfer-type-static":
+      case "-static":
         isStaticTransfer = true;
         break;
       default:
