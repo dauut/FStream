@@ -50,6 +50,8 @@ public class GridFTPClient implements Runnable {
     public boolean useDynamicScheduling = false;
     public boolean useOnlineTuning = true;
 
+    private static int uniqueChannelID = 0;
+
     private static final Log LOG = LogFactory.getLog(GridFTPClient.class);
 
     public GridFTPClient(String source, String dest, String proxy) {
@@ -87,6 +89,7 @@ public class GridFTPClient implements Runnable {
 
             channelPair.setChunkType(chunk.getDensity().toString());
             LOG.info("Channel = " + channelId + " marked as inUse..");
+            System.out.println("Channel : " + channelId + " CREATED with settings: " + params.toString());
             if (params.getParallelism() > 1)
                 channelPair.setParallelism(params.getParallelism());
             channelPair.setPipelining(params.getPipelining());
@@ -296,8 +299,9 @@ public class GridFTPClient implements Runnable {
 
         for (int i = 0; i < concurrency; i++) {
             XferList.MlsxEntry firstFile = synchronizedPop(firstFilesToSend);
-            Runnable transferChannel = new TransferChannel(fileCluster, i, firstFile);
+            Runnable transferChannel = new TransferChannel(fileCluster, uniqueChannelID, firstFile);
             executor.submit(transferChannel);
+            uniqueChannelID++;
         }
 
         // If not all of the files in firstFilsToSend list is used for any reason,
