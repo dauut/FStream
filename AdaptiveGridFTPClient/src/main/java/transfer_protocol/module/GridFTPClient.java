@@ -34,7 +34,7 @@ public class GridFTPClient implements Runnable {
     public static FTPClient ftpClient;
     public static ExecutorService executor;
     public static Queue<InetAddress> sourceIpList, destinationIpList;
-
+    public static boolean channelCreationStarted = false;
 
     static int fastChunkId = -1, slowChunkId = -1, period = 0;
     URI usu = null, udu = null;
@@ -50,7 +50,7 @@ public class GridFTPClient implements Runnable {
     public boolean useDynamicScheduling = false;
     public boolean useOnlineTuning = true;
 
-    private static int uniqueChannelID = 0;
+    public static int uniqueChannelID = 0;
 
     private static final Log LOG = LogFactory.getLog(GridFTPClient.class);
 
@@ -76,6 +76,7 @@ public class GridFTPClient implements Runnable {
                                            XferList.MlsxEntry firstFileToTransfer) {
         TunableParameters params = chunk.getTunableParameters();
         channelPair.chunk = chunk;
+        AdaptiveGridFTPClient.channelInUse.add(channelPair);
         try {
             channelPair.setID(channelId);
             if (chunk.getDensity().toString().equals("LARGE")) {
@@ -90,6 +91,7 @@ public class GridFTPClient implements Runnable {
             channelPair.setChunkType(chunk.getDensity().toString());
             LOG.info("Channel = " + channelId + " marked as inUse..");
             System.out.println("Channel : " + channelId + " CREATED with settings: " + params.toString());
+            LOG.info("Channel : " + channelId + " CREATED with settings: " + params.toString());
             if (params.getParallelism() > 1)
                 channelPair.setParallelism(params.getParallelism());
             channelPair.setPipelining(params.getPipelining());
@@ -293,9 +295,9 @@ public class GridFTPClient implements Runnable {
 
         // Create <concurrency> times channels and start them
 
-        if (!ConfigurationParams.isStaticTransfer){
-            concurrency = AdaptiveGridFTPClient.sessionParametersMap.get(fileCluster.getDensity().toString()).getConcurrency();
-        }
+//        if (!ConfigurationParams.isStaticTransfer){
+//            concurrency = AdaptiveGridFTPClient.sessionParametersMap.get(fileCluster.getDensity().toString()).getConcurrency();
+//        }
 
         for (int i = 0; i < concurrency; i++) {
             XferList.MlsxEntry firstFile = synchronizedPop(firstFilesToSend);
@@ -363,6 +365,7 @@ public class GridFTPClient implements Runnable {
             int trial = 0;
             while (!success && trial < 3) {
                 try {
+                    channelCreationStarted = true;
                     // Channel zero is main channel and already created
                     ChannelModule.ChannelPair channel;
                     InetAddress srcIp, dstIp;
@@ -390,7 +393,9 @@ public class GridFTPClient implements Runnable {
                     FTPURI dstFTPUri = new FTPURI(dstUri, du.cred);
                     channel = new ChannelModule.ChannelPair(srcFTPUri, dstFTPUri);
                     channelPairList.add(channel);
+//                    AdaptiveGridFTPClient.channelInUse.add(channel);
                     success = setupChannelConf(channel, channelId, fileCluster, firstFileToTransfer);
+                    channelCreationStarted = false;
                     if (success) {
                         synchronized (fileCluster.getRecords().channels) {
                             fileCluster.getRecords().channels.add(channel);
@@ -491,9 +496,9 @@ public class GridFTPClient implements Runnable {
         }
     }
 
-    public void startTransferMonitor() {
+    public void startTransferMonitor(AdaptiveGridFTPClient main) {
         if (transferMonitorThread == null || !transferMonitorThread.isAlive()) {
-            transferMonitorThread = new Thread(new TransferMonitor());
+            transferMonitorThread = new Thread(new TransferMonitor(main));
             transferMonitorThread.start();
         }
     }
@@ -832,6 +837,11 @@ public class GridFTPClient implements Runnable {
         final int interval = 5000;
         int timer = 0;
         Writer writer;
+        AdaptiveGridFTPClient main;
+        TransferMonitor(AdaptiveGridFTPClient main){
+            this.main = main;
+        }
+        int i =0;
 
         @Override
         public void run() {
@@ -843,6 +853,20 @@ public class GridFTPClient implements Runnable {
                     timer += interval / 1000;
                     monitorChannels(interval / 1000, writer, timer);
                     Thread.sleep(interval);
+                    i++;
+                    if (i %2 ==0){
+                        Runnable run = new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    main.checkNewData();
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        };
+                        run.run();
+                    }
                 }
                 System.out.println("Leaving monitoring...");
             } catch (Exception e) {

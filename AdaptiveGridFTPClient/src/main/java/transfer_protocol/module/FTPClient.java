@@ -93,6 +93,7 @@ public class FTPClient {
                 String fullPath = path + p;
                 if (!pipingPathSet.contains(fullPath)) {
                     System.out.println("Piping  " + cmd + " " + path + p);
+                    LOG.info("Piping  " + cmd + " " + path + p);
                     pipingPathSet.add(fullPath);
                 }
                 cc.rc.write(cmd, path + p);

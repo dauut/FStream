@@ -183,7 +183,7 @@ public class ChannelModule {
           sb.append(path);
           sb.append(fileName);
           String fullpath = sb.toString();
-          if (prevList != null && !prevList.contains(fullpath)) {
+//          if (prevList != null && !prevList.contains(fullpath)) {
 //            AdaptiveGridFTPClient.isNewFile = true;
 //            System.out.println("prevlist");
             if (type.equals(org.globus.ftp.MlsxEntry.TYPE_FILE)) {
@@ -191,7 +191,7 @@ public class ChannelModule {
             } else if (!fileName.equals(".") && !fileName.equals("..")) {
               xl.add(path + fileName);
             }
-          }
+//          }
         } catch (Exception e) {
           e.printStackTrace();
           continue;  // Weird data I guess!
