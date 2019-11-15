@@ -90,18 +90,18 @@ public class GridFTPClient implements Runnable {
 
             channelPair.setChunkType(chunk.getDensity().toString());
             LOG.info("Channel = " + channelId + " marked as inUse..");
-            System.out.println("Channel : " + channelId + " CREATED with settings: " + params.toString());
+//            System.out.println("Channel : " + channelId + " CREATED with settings: " + params.toString());
             LOG.info("Channel : " + channelId + " CREATED with settings: " + params.toString());
             if (params.getParallelism() > 1)
                 channelPair.setParallelism(params.getParallelism());
             channelPair.setPipelining(params.getPipelining());
             channelPair.setBufferSize(params.getBufferSize());
             channelPair.setPerfFreq(perfFreq);
-            if (!AdaptiveGridFTPClient.channelsWithParallelismCountMap.containsKey(channelPair.parallelism)){
+            if (!AdaptiveGridFTPClient.channelsWithParallelismCountMap.containsKey(channelPair.parallelism)) {
                 ArrayList<ChannelModule.ChannelPair> channels = new ArrayList<>();
                 channels.add(channelPair);
-                AdaptiveGridFTPClient.channelsWithParallelismCountMap.put(channelPair.parallelism,channels);
-            }else{
+                AdaptiveGridFTPClient.channelsWithParallelismCountMap.put(channelPair.parallelism, channels);
+            } else {
                 AdaptiveGridFTPClient.channelsWithParallelismCountMap.get(channelPair.parallelism).add(channelPair);
             }
             if (!channelPair.isDataChannelReady()) {
@@ -295,10 +295,6 @@ public class GridFTPClient implements Runnable {
 
         // Create <concurrency> times channels and start them
 
-//        if (!ConfigurationParams.isStaticTransfer){
-//            concurrency = AdaptiveGridFTPClient.sessionParametersMap.get(fileCluster.getDensity().toString()).getConcurrency();
-//        }
-
         for (int i = 0; i < concurrency; i++) {
             XferList.MlsxEntry firstFile = synchronizedPop(firstFilesToSend);
             Runnable transferChannel = new TransferChannel(fileCluster, uniqueChannelID, firstFile);
@@ -325,7 +321,7 @@ public class GridFTPClient implements Runnable {
 
     public void waitForTransferCompletion() {
         // Check if all the files in all chunks are transferred
-        for (FileCluster fileCluster : ftpClient.fileClusters){
+        for (FileCluster fileCluster : ftpClient.fileClusters) {
             try {
                 while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
                     Thread.sleep(100);
@@ -519,14 +515,14 @@ public class GridFTPClient implements Runnable {
                     //xl.instant_throughput = 0;
                     estimatedCompletionTime = ((xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput) - xl.interval;
                     xl.interval += interval;
-                    System.out.println("Chunk " + i + " " + chunk.getDensity().toString()+
+                    System.out.println("Chunk " + i + " " + chunk.getDensity().toString() +
                             "\t threads:" + xl.channels.size() +
                             "\t count:" + xl.count() +
                             "\t total:" + Utils.printSize(xl.size(), true) +
                             "\t interval:" + xl.interval +
                             "\t onAir:" + xl.onAir);
                 } else { // This chunk is active but has not transferred any data yet
-                    System.out.println("Chunk " + i + " " + chunk.getDensity().toString()+
+                    System.out.println("Chunk " + i + " " + chunk.getDensity().toString() +
                             "\t threads:" + xl.channels.size() +
                             "\t count:" + xl.count() +
                             "\t total:" + Utils.printSize(xl.size(), true)
@@ -552,7 +548,7 @@ public class GridFTPClient implements Runnable {
                 }
                 estimatedCompletionTime = 8 * (xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput;
                 xl.estimatedFinishTime = estimatedCompletionTime;
-                System.out.println("Chunk " + i + " " + chunk.getDensity().toString()+
+                System.out.println("Chunk " + i + " " + chunk.getDensity().toString() +
                         "\t threads:" + xl.channels.size() +
                         "\t count:" + xl.count() +
                         "\t transferred:" + Utils.printSize(xl.totalTransferredSize, true) +
@@ -838,11 +834,12 @@ public class GridFTPClient implements Runnable {
         int timer = 0;
         Writer writer;
         AdaptiveGridFTPClient main;
-        TransferMonitor(AdaptiveGridFTPClient main){
+
+        TransferMonitor(AdaptiveGridFTPClient main) {
             this.main = main;
         }
-        int i =0;
 
+        int i = 3;
         @Override
         public void run() {
             try {
@@ -854,19 +851,16 @@ public class GridFTPClient implements Runnable {
                     monitorChannels(interval / 1000, writer, timer);
                     Thread.sleep(interval);
                     i++;
-                    if (i %2 ==0){
-                        Runnable run = new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    main.checkNewData();
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        };
-                        run.run();
-                    }
+
+                    Runnable run = () -> {
+                        try {
+                            main.checkNewData();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    };
+                    run.run();
+
                 }
                 System.out.println("Leaving monitoring...");
             } catch (Exception e) {

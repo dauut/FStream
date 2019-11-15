@@ -25,6 +25,15 @@ public class MonitorTransfer extends Thread {
         long start = System.currentTimeMillis();
         long timeSpent = 0;
 
+//        while (AdaptiveGridFTPClient.channelInUse.size() != 0) {
+//            try {
+//                Thread.sleep(100);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
+
         for (FileCluster fileCluster : chunks){
             try {
                 while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
