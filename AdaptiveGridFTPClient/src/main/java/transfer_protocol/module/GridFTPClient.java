@@ -4,6 +4,7 @@ import client.AdaptiveGridFTPClient;
 import client.ConfigurationParams;
 import client.FileCluster;
 import client.hysterisis.Hysteresis;
+import client.utils.CheckNewData;
 import client.utils.HostResolution;
 import client.utils.TunableParameters;
 import client.utils.Utils;
@@ -31,6 +32,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static client.utils.Utils.getChannels;
 
 public class GridFTPClient implements Runnable {
+    private Thread checkDataThread;
     public static FTPClient ftpClient;
     public static ExecutorService executor;
     public static Queue<InetAddress> sourceIpList, destinationIpList;
@@ -284,6 +286,7 @@ public class GridFTPClient implements Runnable {
         fileList.channels = new LinkedList<>();
         fileList.initialSize = fileList.size();
 
+
         // Reserve one file for each channel, otherwise pipelining
         // may lead to assigning all files to one channel
         List<XferList.MlsxEntry> firstFilesToSend = Lists.newArrayListWithCapacity(concurrency);
@@ -325,6 +328,7 @@ public class GridFTPClient implements Runnable {
             try {
                 while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
                     Thread.sleep(100);
+
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -399,7 +403,15 @@ public class GridFTPClient implements Runnable {
                         synchronized (ftpClient.channelList) {
                             ftpClient.channelList.add(channel);
                         }
-                        ftpClient.transferList(channel);
+                        try {
+                            ftpClient.transferList(channel);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            System.err.println("Exception occured create new channel for this chunk");
+                            FileCluster chunk = channel.chunk;
+                            hotFixNewChannelExceptioncase(chunk);
+                            channel.close();
+                        }
 
                     } else {
                         trial++;
@@ -419,6 +431,19 @@ public class GridFTPClient implements Runnable {
 
     }
 
+    public static void hotFixNewChannelExceptioncase(FileCluster chunk) {
+        XferList fileList = chunk.getRecords();
+        List<XferList.MlsxEntry> firstFilesToSend = Lists.newArrayListWithCapacity(1);
+        XferList.MlsxEntry e = fileList.pop();
+        firstFilesToSend.add(e);
+        XferList.MlsxEntry firstFile;
+        synchronized (firstFilesToSend) {
+            firstFile = firstFilesToSend.remove(0);
+        }
+        Runnable transferChannel = new GridFTPClient.TransferChannel(chunk, GridFTPClient.uniqueChannelID, firstFile);
+        GridFTPClient.executor.submit(transferChannel);
+        GridFTPClient.uniqueChannelID++;
+    }
 
 
     /*
@@ -564,6 +589,7 @@ public class GridFTPClient implements Runnable {
             writer.write(timer + "\t" + xl.channels.size() + "\t" + (throughputInMbps) / (1000 * 1000.0) + "\n");
             writer.flush();
         }
+
         System.out.println("*******************");
         if (ftpClient.fileClusters.size() > 1 && useDynamicScheduling) {
             checkIfChannelReallocationRequired(estimatedCompletionTimes);
@@ -840,6 +866,7 @@ public class GridFTPClient implements Runnable {
         }
 
         int i = 3;
+
         @Override
         public void run() {
             try {
@@ -852,14 +879,14 @@ public class GridFTPClient implements Runnable {
                     Thread.sleep(interval);
                     i++;
 
-                    Runnable run = () -> {
-                        try {
-                            main.checkNewData();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    };
-                    run.run();
+                    if (checkDataThread == null || !checkDataThread.isAlive()) {
+                        checkDataThread = new CheckNewData(main);
+                        checkDataThread.start();
+                        System.out.println("Check data started....");
+                    } else {
+                        System.out.println("Check data still alive.......");
+                    }
+
 
                 }
                 System.out.println("Leaving monitoring...");

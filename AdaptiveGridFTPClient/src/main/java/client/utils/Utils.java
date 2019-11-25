@@ -7,6 +7,8 @@ import client.hysterisis.Entry;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import transfer_protocol.module.ChannelModule;
 import transfer_protocol.module.GridFTPClient;
 import transfer_protocol.util.XferList;
@@ -155,7 +157,7 @@ public class Utils {
 
         Collections.sort(fileClusters);
         mergePartitions(fileClusters, bandwidth, rtt);
-
+        Logger debugLogger = LogManager.getLogger("reportsLogger");
         for (int i = 0; i < fileClusters.size(); i++) {
             FileCluster chunk = fileClusters.get(i);
             chunk.getRecords().sp = list.sp;
@@ -166,6 +168,11 @@ public class Utils {
                     Utils.printSize(fileClusters.get(i).getCentroid(), true)
                     + " \t total:" + Utils.printSize(fileClusters.get(i).getRecords().size(), true) + " Density:" +
                     chunk.getDensity());
+            debugLogger.debug("Chunk " + i + ":\tfiles:" + fileClusters.get(i).getRecords().count() + "\t avg:" +
+                    Utils.printSize(fileClusters.get(i).getCentroid(), true)
+                    + " \t total:" + Utils.printSize(fileClusters.get(i).getRecords().size(), true) + " Density:" +
+                    chunk.getDensity());
+            chunk.getRecords().setUnderstandableSize(Utils.printSize(chunk.getRecords().size(),true));
         }
 //        System.out.println("Chunk count = " + fileClusters.size());
 //        boolean isInChunk = false;

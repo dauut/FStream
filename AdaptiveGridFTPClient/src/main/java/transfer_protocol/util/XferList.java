@@ -21,6 +21,15 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
   private LinkedList<MlsxEntry> list = new LinkedList<>();
   private long size = 0;
   private int count = 0;  // Number of files (not dirs)
+  private String understandableSize = "";
+
+  public String getUnderstandableSize() {
+    return understandableSize;
+  }
+
+  public void setUnderstandableSize(String understandableSize) {
+    this.understandableSize = understandableSize;
+  }
 
   // Create an XferList for a directory.
   public XferList(String src, String dest) {

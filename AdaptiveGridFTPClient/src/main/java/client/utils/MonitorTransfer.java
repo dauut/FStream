@@ -7,6 +7,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class MonitorTransfer extends Thread {
@@ -24,31 +25,48 @@ public class MonitorTransfer extends Thread {
         System.err.println("Monitor transfer runs.");
         long start = System.currentTimeMillis();
         long timeSpent = 0;
-
-//        while (AdaptiveGridFTPClient.channelInUse.size() != 0) {
-//            try {
-//                Thread.sleep(100);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        }
-
-
-        for (FileCluster fileCluster : chunks){
+        try {
+            Thread.sleep(8000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        while (AdaptiveGridFTPClient.channelInUse.size() != 0) {
             try {
-                while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
-                    Thread.sleep(100);
-                }
-            } catch (Exception e) {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
                 e.printStackTrace();
-                System.exit(-1);
             }
         }
+//
+//        for (FileCluster fileCluster : chunks){
+//            try {
+//                while (fileCluster.getRecords().totalTransferredSize < fileCluster.getRecords().initialSize) {
+//                        Thread.sleep(100);
+//                }
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                System.exit(-1);
+//            }
+//        }
 
         timeSpent += (System.currentTimeMillis() - start) / 1000;
         System.err.println("Transfer:" + AdaptiveGridFTPClient.TRANSFER_NUMBER + " completed in: " + timeSpent
                 + " throughput: " + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
                 / (timeSpent * (1000.0 * 1000)));
+        for (FileCluster f : chunks) {
+            if (f.getRecords().totalTransferredSize < f.getRecords().initialSize) {
+                System.out.println("Transferred size =  " + f.getRecords().totalTransferredSize + " initialsize = " + f.getRecords().initialSize);
+            } else {
+                System.out.println("Transfer not completed difff" + Utils.printSize((f.getRecords().initialSize - f.getRecords().totalTransferredSize), true));
+            }
+        }
+        try {
+            AdaptiveGridFTPClient.writer.write("Res: " + timeSpent + "\t" + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
+                    / (timeSpent * (1000.0 * 1000)) + "\n");
+            AdaptiveGridFTPClient.writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         debugLogger.debug(timeSpent + "\t" + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
                 / (timeSpent * (1000.0 * 1000)));
         LOG.info("Throughput : " + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)

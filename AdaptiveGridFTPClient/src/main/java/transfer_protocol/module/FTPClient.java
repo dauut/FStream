@@ -268,6 +268,7 @@ public class FTPClient {
                 } else {
                     AdaptiveGridFTPClient.largeMarkedChannels.put(cc, false);
                 }
+                cc.setMarkedAsRemove(false);
                 return;
             }
         }
