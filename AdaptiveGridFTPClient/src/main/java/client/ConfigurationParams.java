@@ -24,7 +24,8 @@ public class ConfigurationParams {
 
   boolean channelLevelDebug = false;
   public static boolean isStaticTransfer = false;
-  public static boolean parallismOptimization = false;
+  public static boolean parallelismOptimization = false;
+  public static boolean profiling = false;
   int perfFreq = 3;
 
   String proxyFile;
@@ -239,7 +240,10 @@ public class ConfigurationParams {
         isStaticTransfer = true;
         break;
       case "-parOpt":
-        parallismOptimization = true;
+        parallelismOptimization = true;
+        break;
+      case "-profiling":
+        profiling = true;
         break;
       default:
         System.err.println("Unrecognized input parameter " + config);

@@ -844,7 +844,12 @@ public class ChannelModule {
       }
 
       if (r != null && (!Reply.isPositivePreliminary(r)) ) {
-        error = new Exception("failed to start " + r.getCode() + ":" + r.getCategory() + ":" + r.getMessage());
+        try{
+          error = new Exception("failed to start " + r.getCode() + ":" + r.getCategory() + ":" + r.getMessage());
+        }catch (Exception e){
+          System.out.println("Move on with this error");
+          e.printStackTrace();
+        }
       }
       while (other.error == null) {
         r = cc.read();

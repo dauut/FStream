@@ -136,6 +136,11 @@ public class Utils {
                     FileCluster p = new FileCluster();
                     fileClusters.add(0,p);
                 }
+            }else{
+                if(AdaptiveGridFTPClient.isSwapped){
+                    Collections.swap(fileClusters,0,1);
+                    AdaptiveGridFTPClient.isSwapped = false;
+                }
             }
         } else {
             fileClusters = new ArrayList<>();

@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -524,9 +525,11 @@ public class GridFTPClient implements Runnable {
         }
     }
 
-    private void monitorChannels(int interval, Writer writer, int timer) throws IOException {
+    private void monitorChannels(int interval, Writer writer, Writer writer2, Writer writer3, int timer) throws IOException {
         DecimalFormat df = new DecimalFormat("###.##");
         double[] estimatedCompletionTimes = new double[ftpClient.fileClusters.size()];
+        int totalChannelInUse = 0;
+        double totalThroughput = 0;
         for (int i = 0; i < ftpClient.fileClusters.size(); i++) {
             double estimatedCompletionTime = -1;
             FileCluster chunk = ftpClient.fileClusters.get(i);
@@ -588,8 +591,32 @@ public class GridFTPClient implements Runnable {
             estimatedCompletionTimes[i] = estimatedCompletionTime;
             writer.write(timer + "\t" + xl.channels.size() + "\t" + (throughputInMbps) / (1000 * 1000.0) + "\n");
             writer.flush();
+
+            totalChannelInUse += xl.channels.size();
+            totalThroughput += ((throughputInMbps) / (1000 * 1000.0));
+
+        }
+        if (Double.compare(AdaptiveGridFTPClient.transferTask.getBandwidth(), totalThroughput)<0){
+            AdaptiveGridFTPClient.transferTask.setBandwidth(totalThroughput);
         }
 
+        writer2.write(timer + "\t" + totalChannelInUse + "\t" + timer + "\t" + totalThroughput + "\n");
+        writer2.flush();
+
+        double chunk1AvgSize = 0.0;
+        double chunk2AvgSize = 0.0;
+        if (AdaptiveGridFTPClient.chunks!=null){
+            for (int i = 0; i < AdaptiveGridFTPClient.chunks.size(); i++){
+                if (AdaptiveGridFTPClient.chunks.get(i).getDensity().toString().equals("SMALL")){
+                    chunk1AvgSize =  AdaptiveGridFTPClient.chunks.get(i).getCentroid() / (1024.0 * 1024);
+                }else{
+                    chunk2AvgSize =  AdaptiveGridFTPClient.chunks.get(i).getCentroid() / (1024.0 * 1024);
+                }
+            }
+        }
+        String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").format(Calendar.getInstance().getTime());
+        writer3.write(timeStamp + "," + chunk1AvgSize + "," + chunk2AvgSize + "," + totalThroughput +"\n");
+        writer3.flush();
         System.out.println("*******************");
         if (ftpClient.fileClusters.size() > 1 && useDynamicScheduling) {
             checkIfChannelReallocationRequired(estimatedCompletionTimes);
@@ -856,9 +883,11 @@ public class GridFTPClient implements Runnable {
     }
 
     public class TransferMonitor implements Runnable {
-        final int interval = 5000;
+        final int interval = 4000;
         int timer = 0;
         Writer writer;
+        Writer writer2;
+        Writer writer3;
         AdaptiveGridFTPClient main;
 
         TransferMonitor(AdaptiveGridFTPClient main) {
@@ -871,11 +900,13 @@ public class GridFTPClient implements Runnable {
         public void run() {
             try {
                 writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("inst-throughput.txt"), "utf-8"));
+                writer2 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("inst-overall-throughput.txt"), "utf-8"));
+                writer3 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("time-series-analysis.txt"), "utf-8"));
                 initializeMonitoring();
                 Thread.sleep(interval);
                 while (!AdaptiveGridFTPClient.isTransferCompleted) {
                     timer += interval / 1000;
-                    monitorChannels(interval / 1000, writer, timer);
+                    monitorChannels(interval / 1000, writer, writer2,writer3, timer);
                     Thread.sleep(interval);
                     i++;
 
@@ -886,8 +917,6 @@ public class GridFTPClient implements Runnable {
                     } else {
                         System.out.println("Check data still alive.......");
                     }
-
-
                 }
                 System.out.println("Leaving monitoring...");
             } catch (Exception e) {

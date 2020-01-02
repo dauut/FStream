@@ -37,12 +37,10 @@ public class AdaptiveGridFTPClient {
     private HashSet<String> allFiles = new HashSet<>();
     private static boolean isNewFile = false;
     private ArrayList<FileCluster> tmpchunks = null;
-//    private FileCluster newChunk;
 
-    private ArrayList<FileCluster> chunks;
+    public static ArrayList<FileCluster> chunks;
     private static boolean firstPassPast = false;
     public static int TRANSFER_NUMBER = 1;
-    //    private List<SessionParameters> sessionParameters = new ArrayList<>();
     public static HashMap<String, SessionParameters> sessionParametersMap = new HashMap<>();
 
     public static HashMap<Integer, Boolean> isTransfersCopmletedMap = new HashMap<>();
@@ -66,11 +64,10 @@ public class AdaptiveGridFTPClient {
 
     private ArrayList<FileCluster> tempChunksForCalculateSizes = null;
     public static boolean firstTransferCompleted = false;
-    private boolean minOptimized = false;
     private int globalFileCounter = 0;
-
-
     public static Writer writer;
+
+    public static boolean isSwapped = false;
 
     public AdaptiveGridFTPClient() {
         //initialize output streams for message logging
@@ -149,6 +146,7 @@ public class AdaptiveGridFTPClient {
      * */
     private void lookForNewData() throws IOException {
         //Get metadata information of dataset
+        XferList distinguishedNewDataset = new XferList(transferTask.getSource(), transferTask.getDestination());
         XferList dataset = null;
         try {
             if (gridFTPClient == null) {
@@ -167,22 +165,25 @@ public class AdaptiveGridFTPClient {
                     i -= 1;
                 } else {
                     allFiles.add(dataset.getFileList().get(i).fullPath());
+                    distinguishedNewDataset.getFileList().add(dataset.getFileList().get(i));
                     isNewFile = true;
                 }
             }
-            end+=(System.currentTimeMillis() - start) / 1000;
+            end += (System.currentTimeMillis() - start) / 1000;
             System.out.println("READ TIME: " + end + " seconds. File count = " + dataset.getFileList().size());
         } catch (Exception e) {
             e.printStackTrace();
         }
+
         newDataset = dataset; // assign most recent dataset
 
         if (newDataset != null && isNewFile) {
             TunableParameters overAllParams = Utils.getBestParams(newDataset, 1);
             debugLogger.debug("OverallParamsForThisFileSet = " + overAllParams.toString());
         }
+
         if (isNewFile) {
-            tempChunksForCalculateSizes = Utils.createFileClusters(newDataset, tempChunksForCalculateSizes, conf.bandwidth, conf.rtt, maximumChunks);
+            tempChunksForCalculateSizes = Utils.createFileClusters(distinguishedNewDataset, tempChunksForCalculateSizes, conf.bandwidth, conf.rtt, maximumChunks);
             if (chunks != null)
                 System.out.println(chunks.size());
             for (FileCluster f : tempChunksForCalculateSizes) {
@@ -190,14 +191,16 @@ public class AdaptiveGridFTPClient {
                 debugLogger.debug("New Chunk " + f.getDensity().toString() + " size: " + f.getRecords().getUnderstandableSize());
                 newDatasetSizes.put(f.getDensity().toString(), f.getRecords().size());
                 System.out.println("Size in byte : " + f.getRecords().size());
-                writer.write(globalFileCounter + " Chunk Density: " + f.getDensity() + ":\tFiles count, avgs, total:" + f.getRecords().count() + "\t" +
-                        Utils.printSize(f.getCentroid(), true)
-                        + "\t" + Utils.printSize(f.getRecords().size(), true) + "\t" + f.getDensity().toString() + "\n");
+                writer.write(globalFileCounter + " Chunk Density: " + f.getDensity() +
+                        ":\tFiles count, avgs, total:" + f.getRecords().count() + "\t" +
+                        Utils.printSize(f.getCentroid(), true) +
+                        "\t" + Utils.printSize(f.getRecords().size(), true) +
+                        "\t" + f.getDensity().toString() + "\t" + f.getRecords().size() + "\n");
                 writer.flush();
             }
-
-
+            tempChunksForCalculateSizes = null;
         }
+
         if (isNewFile && firstPassPast) {
             try {
                 addNewFilesToChunks();
@@ -209,7 +212,7 @@ public class AdaptiveGridFTPClient {
 
     public void checkNewData() throws InterruptedException {
         if (dataNotChangeCounter < 1000) {
-            Thread.sleep(10 * 1000); //wait for X sec. before next check
+            Thread.sleep(5 * 1000); //wait for X sec. before next check
             System.err.println("Checking data counter = " + dataNotChangeCounter);
             if (dataNotChangeCounter < 10)
                 LOG.info("Checking data counter = " + dataNotChangeCounter);
@@ -219,15 +222,26 @@ public class AdaptiveGridFTPClient {
                 e.printStackTrace();
             }
 
-            if (minOptimized) {
+            double totalThroughput = 0;
+            if (ConfigurationParams.profiling) {
                 // if there is no new file for 100 seconds than look for new settings.
-                if (chunks != null && dataNotChangeCounter > 0 && dataNotChangeCounter % 10 == 0 && !ConfigurationParams.isStaticTransfer) {
+                if (chunks != null && dataNotChangeCounter > 0 && dataNotChangeCounter % 2 == 0 && !ConfigurationParams.isStaticTransfer) {
                     long start = System.currentTimeMillis();
                     long end = 0;
+                    for (FileCluster chunk : chunks) {
+                        totalThroughput += chunk.getRecords().instant_throughput;
+                    }
+
+                    System.out.println("totalThroughput = " + totalThroughput + " transferTask.getBandwidth() = " +
+                            transferTask.getBandwidth() + "bandwidth / totalth = " +
+                            transferTask.getBandwidth() / totalThroughput);
+
                     debugLogger.debug("---Parameters change without new file adding.... ---");
                     int[][] estimatedParamsForChunks = new int[chunks.size()][4];
                     tuneNewChunkParameters(estimatedParamsForChunks);
-                    Utils.allocateChannelsToChunks(chunks, transferTask.getMaxConcurrency(), conf.channelDistPolicy);
+//                    Utils.allocateChannelsToChunks(chunks, transferTask.getMaxConcurrency(), conf.channelDistPolicy);
+                    chunkProfiling(totalThroughput);
+                    System.out.println("Chunk profiling completed.");
                     for (FileCluster chunk : chunks) {
                         HashSet<ChannelModule.ChannelPair> channelInUseForThisChunk = new HashSet<>(chunk.getRecords().channels);
                         boolean isConcurrencyChange = isConcChange(sessionParametersMap.get(chunk.getDensity().toString()), chunk.getRecords().channels, chunk.getTunableParameters().getConcurrency());
@@ -239,7 +253,7 @@ public class AdaptiveGridFTPClient {
                         }
                         for (int i = 0; i < chunk.getRecords().channels.size(); i++) {
                             if (!channelInUseForThisChunk.contains(chunk.getRecords().channels.get(i))) {
-                                if (ConfigurationParams.parallismOptimization) {
+                                if (ConfigurationParams.parallelismOptimization) {
                                     debugLogger.debug("Channel in use effective par: " + chunk.getRecords().channels.get(i).parallelism);
                                 }
                                 channelInUse.add(chunk.getRecords().channels.get(i));
@@ -247,16 +261,11 @@ public class AdaptiveGridFTPClient {
                                 GridFTPClient.executor.submit(runs);
                             }
                         }
-//                        boolean isParallelismChange = parallelismChange(sessionParametersMap.get(chunk.getDensity().toString()), chunk);
-//
-//                        long start2 = System.currentTimeMillis();
-//                        if (isParallelismChange) {
-//                            long end2 = 0;
-//                            end2 += (System.currentTimeMillis() - start2) / 1000;
-//                            LOG.info("Ch count = " + chunk.getRecords().channels.size() + " parallelism settings time = " + end2 + " seconds.");
-//                            if (printSysOut)
-//                                System.out.println("Ch count = " + chunk.getRecords().channels.size() + " parallelism settings time = " + end2 + " seconds.");
-//                        }
+
+                        if (chunk.getRecords().channels.size() < chunk.getTunableParameters().getConcurrency()) {
+                            isExtraChannelNeeded = true;
+                            extraChCount = chunk.getTunableParameters().getConcurrency() - chunk.getRecords().channels.size();
+                        }
 
                         createExtraChannels(chunk);
                     }
@@ -272,6 +281,33 @@ public class AdaptiveGridFTPClient {
                 dataNotChangeCounter++;
             }
         }
+    }
+
+    private void chunkProfiling(double totalThroughput) {
+        LOG.info("-------------PROFILING START------------------");
+        System.out.println("-------------PROFILING START------------------");
+        double perChannelThroughput;
+        double upperLimit = (transferTask.getBandwidth() * 80) / 100;
+        perChannelThroughput = totalThroughput / channelInUse.size();
+        LOG.info("upperLimit = " + upperLimit + " perChannelThroughput = " + perChannelThroughput);
+        int possibleConcCount = (int) (upperLimit / perChannelThroughput);
+        System.out.println("POssible ch count = " + possibleConcCount);
+        if (possibleConcCount > channelInUse.size()) {
+            if (possibleConcCount > conf.maxConcurrency || (possibleConcCount + channelInUse.size()) > conf.maxConcurrency) {
+                possibleConcCount = conf.maxConcurrency;
+                System.out.println("UPDATED POssible ch count = " + possibleConcCount);
+            }
+            Utils.allocateChannelsToChunks(chunks, possibleConcCount, conf.channelDistPolicy);
+            System.out.println("Allocation copmleted: ");
+            for (FileCluster f : chunks) {
+                System.out.println(f.getDensity() + " conc = " + f.getTunableParameters().getConcurrency());
+                SessionParameters sp = sessionParametersMap.get(f.getDensity().toString());
+                sp.setConcurrency(f.getTunableParameters().getConcurrency());
+                sessionParametersMap.put(f.getDensity().toString(), sp);
+            }
+        }
+        LOG.info("-------------PROFILING END------------------");
+        System.out.println("-------------PROFILING END------------------");
     }
 
     private void parseArguments(String[] arguments) {
@@ -371,11 +407,6 @@ public class AdaptiveGridFTPClient {
 
         for (FileCluster fileCluster : chunks) {
             gridFTPClient.runTransfer(fileCluster);
-//            writer.write(globalFileCounter + "\t" + fileCluster.getRecords().getFileList().size() + "\t" +
-//                    Utils.printSize(fileCluster.getRecords().avgFileSize(), true)
-//                    + "\t" + Utils.printSize(fileCluster.getRecords().size(), true) + "\t" +
-//                    fileCluster.getDensity().toString() + "\n");
-//            writer.flush();
             channelSettingsOfTransferringChunk(fileCluster, sessionParametersMap.get(fileCluster.getDensity().toString()));
         }
         startMonitorThisTransfer();
@@ -443,6 +474,7 @@ public class AdaptiveGridFTPClient {
                             chunks.get(1).getRecords().channels.size() > chunks.get(1).getRecords().channels.size())) {
                 System.out.println("CHUNK SWAP NEEDED!");
                 Collections.swap(chunks, 0, 1);
+                isSwapped = true;
             }
         }
         for (FileCluster chunk : chunks) {
@@ -460,7 +492,9 @@ public class AdaptiveGridFTPClient {
             XferList xl = chunk.getRecords();
             System.out.println("xl.initialsize = " + Utils.printSize(xl.initialSize, true));
             System.out.println("newDatasetsize.chunk = " + Utils.printSize(newDatasetSizes.getOrDefault(chunk.getDensity().toString(), xl.size()), true));
-            xl.initialSize = newDatasetSizes.getOrDefault(chunk.getDensity().toString(), xl.size());
+            synchronized (chunk.getRecords()) {
+                xl.initialSize = xl.initialSize + newDatasetSizes.getOrDefault(chunk.getDensity().toString(), xl.size());
+            }
             System.out.println("xl.initialsize updated= " + Utils.printSize(xl.initialSize, true));
 
             chunk.isReadyToTransfer = true;
@@ -516,7 +550,7 @@ public class AdaptiveGridFTPClient {
                 LOG.info("Ch allocated in " + end + " seconds.");
                 for (int i = 0; i < xl.channels.size(); i++) {
                     if (!channelInUseForThisChunk.contains(xl.channels.get(i))) {
-                        if (ConfigurationParams.parallismOptimization) {
+                        if (ConfigurationParams.parallelismOptimization) {
                             debugLogger.debug("Channel in use effective par: " + xl.channels.get(i).parallelism);
                         }
                         channelInUse.add(xl.channels.get(i));
@@ -527,15 +561,16 @@ public class AdaptiveGridFTPClient {
 
                 startMonitorThisTransfer();
 
-
-                boolean isParallelismChange = parallelismChange(sessionParametersMap.get(cType), chunk);
-                long start2 = System.currentTimeMillis();
-                if (isParallelismChange) {
-                    long end2 = 0;
-                    end2 += (System.currentTimeMillis() - start2) / 1000;
-                    LOG.info("Ch count = " + chunk.getRecords().channels.size() + " parallelism settings time = " + end2 + " seconds.");
-                    if (printSysOut)
-                        System.out.println("Ch count = " + chunk.getRecords().channels.size() + " parallelism settings time = " + end2 + " seconds.");
+                if (!ConfigurationParams.profiling) {
+                    boolean isParallelismChange = parallelismChange(sessionParametersMap.get(cType), chunk);
+                    long start2 = System.currentTimeMillis();
+                    if (isParallelismChange) {
+                        long end2 = 0;
+                        end2 += (System.currentTimeMillis() - start2) / 1000;
+                        LOG.info("Ch count = " + chunk.getRecords().channels.size() + " parallelism settings time = " + end2 + " seconds.");
+                        if (printSysOut)
+                            System.out.println("Ch count = " + chunk.getRecords().channels.size() + " parallelism settings time = " + end2 + " seconds.");
+                    }
                 }
                 createExtraChannels(chunk);
             } else {
@@ -544,7 +579,7 @@ public class AdaptiveGridFTPClient {
                         chunk.getTunableParameters().getConcurrency(), chunk, false, false);
                 for (int i = 0; i < xl.channels.size(); i++) {
                     if (!channelInUseForThisChunk.contains(xl.channels.get(i))) {
-                        if (ConfigurationParams.parallismOptimization) {
+                        if (ConfigurationParams.parallelismOptimization) {
                             debugLogger.debug("Channel in use effective par: " + xl.channels.get(i).parallelism);
                         }
                         channelInUse.add(xl.channels.get(i));
@@ -560,7 +595,7 @@ public class AdaptiveGridFTPClient {
     }
 
     private void createExtraChannels(FileCluster chunk) throws InterruptedException {
-        if (extraChCount > conf.maxConcurrency){
+        if (extraChCount > conf.maxConcurrency) {
             extraChCount = conf.maxConcurrency - GridFTPClient.TransferChannel.channelPairList.size();
         }
         if (isExtraChannelNeeded) {
@@ -716,8 +751,9 @@ public class AdaptiveGridFTPClient {
                             + "[CUR] concurrency = " + sp.getConcurrency()
                             + "; parallelism = " + sp.getParallelism()
                             + "; pipelining = " + sp.getPipelining());
-
-                    sp.setConcurrency(tb.getConcurrency());
+                    if (!ConfigurationParams.profiling) {
+                        sp.setConcurrency(tb.getConcurrency());
+                    }
                     sp.setPipelining(tb.getPipelining());
                     sp.setParallelism(tb.getParallelism());
                     sp.setBufferSize(tb.getBufferSize());
@@ -725,7 +761,9 @@ public class AdaptiveGridFTPClient {
 
                 } else {
                     SessionParameters sp = new SessionParameters();
-                    sp.setConcurrency(tb.getConcurrency());
+                    if (!ConfigurationParams.profiling) {
+                        sp.setConcurrency(tb.getConcurrency());
+                    }
                     sp.setPipelining(tb.getPipelining());
                     sp.setParallelism(tb.getParallelism());
                     sp.setBufferSize(tb.getBufferSize());
@@ -756,6 +794,15 @@ public class AdaptiveGridFTPClient {
 
     private void allocateChannelsOnDemand(int maxConcForThisChunk, int desiredConcurrency, FileCluster chunk,
                                           boolean isConcurrencyChange, boolean isPipeChange) throws InterruptedException {
+
+        if (ConfigurationParams.isStaticTransfer && chunks.size() > 2) {
+            if (chunk.getRecords().channels.size() < desiredConcurrency && chunks.get(1).getRecords().channels.size() > 0) {
+                FileCluster otherChunk = chunks.get(1);
+                int stopChannelCount = desiredConcurrency - chunk.getRecords().channels.size();
+                stopChannelsandMarkedAvailable(stopChannelCount, otherChunk);
+            }
+        }
+
         if (printSysOut)
             System.err.println("----------CHANNEL DISTRIBUTION ON DEMAND STARTED... ");
         LOG.info("----------CHANNEL DISTRIBUTION ON DEMAND STARTED... ");
@@ -804,7 +851,7 @@ public class AdaptiveGridFTPClient {
                         System.out.println("[SYNC] Channel ID = " + channel.getId() + " going to mark as remove..");
                     LOG.info("[SYNC] Channel ID = " + channel.getId() + " going to mark as remove..");
                     chunk.getRecords().channels.get(i).setMarkedAsRemove(true);
-                    while(channel.inTransitFiles.size()!=0 || channelInUse.contains(channel)){
+                    while (channel.inTransitFiles.size() != 0 || channelInUse.contains(channel)) {
                         Thread.sleep(2);
                     }
                     chunk.getRecords().channels.remove(channel);
@@ -813,28 +860,19 @@ public class AdaptiveGridFTPClient {
                 }
             }
 
-//            System.out.println("Will remove list size = " + list.size());
-//            while (list.size() != 0) {
-//                Thread.sleep(2); // give a chance to breath
-//                if (list.get(0).inTransitFiles.size() == 0) {
-//                    list.remove(0);
-//                }
-//            }
-
             Thread.sleep(50);
             if (printSysOut)
                 System.out.println("Channels decreased to size = " + chunk.getRecords().channels.size());
             LOG.info("Channels decreased to size = " + chunk.getRecords().channels.size());
 
             if (isPipeChange) {
-                if (printSysOut)
-                    System.out.println("Pipelining change need. Old pipelining: "
-                            + chunk.getRecords().channels.get(0).getPipelining()
-                            + " new pipelining = " + chunk.getTunableParameters().getPipelining());
-                LOG.info("Pipelining change need. Old pipelining: "
-                        + chunk.getRecords().channels.get(0).getPipelining()
-                        + " new pipelining = " + chunk.getTunableParameters().getPipelining());
-
+//                if (printSysOut)
+//                    System.out.println("Pipelining change need. Old pipelining: "
+//                            + chunk.getRecords().channels.get(0).getPipelining()
+//                            + " new pipelining = " + chunk.getTunableParameters().getPipelining());
+//                LOG.info("Pipelining change need. Old pipelining: "
+//                        + chunk.getRecords().channels.get(0).getPipelining()
+//                        + " new pipelining = " + chunk.getTunableParameters().getPipelining());
                 for (int i = 0; i < chunk.getRecords().channels.size(); i++) {
                     if (chunk.getRecords().channels.get(i).getPipelining() != chunk.getTunableParameters().getPipelining()) {
                         chunk.getRecords().channels.get(i).setPipelining(chunk.getTunableParameters().getPipelining());
@@ -1056,7 +1094,7 @@ public class AdaptiveGridFTPClient {
             LOG.info("i = " + " channel " + chunk.getRecords().channels.get(i).getId() + " paral = " + chunk.getRecords().channels.get(i).parallelism);
             if (chunk.getRecords().channels.get(i).parallelism != requestedParallelism) {
 
-                if (ConfigurationParams.parallismOptimization) {
+                if (ConfigurationParams.parallelismOptimization) {
                     if (Math.abs(chunk.getRecords().channels.get(i).parallelism - requestedParallelism) < 2) {
                         System.out.println("PARALLELISM DIFFERENCE IS NOT MORE THAN 1, CONTINUE;;;;;;");
                         continue;
@@ -1141,16 +1179,6 @@ public class AdaptiveGridFTPClient {
         smallMarkedChannels.remove(oldChannel);
         largeMarkedChannels.remove(oldChannel);
         channelInUse.remove(oldChannel);
-
-//        }
-        /*else {
-            oldChannel.chunk = oldChannel.newChunk;
-            oldChannel.setPipelining(oldChannel.newChunk.getTunableParameters().getPipelining());
-            oldChannel.pipeTransfer(fileToStart);
-            oldChannel.inTransitFiles.add(fileToStart);
-            newChannel = oldChannel;
-        }*/
-
         synchronized (newFileList.channels) {
             newFileList.channels.add(newChannel);
         }
@@ -1158,7 +1186,6 @@ public class AdaptiveGridFTPClient {
         if (printSysOut)
             System.out.println("restartChannel end  = " + newChannel.parallelism);
         LOG.info("restartChannel end  = " + newChannel.parallelism);
-//        System.out.println("New CHANNEL CHUNK: " + newChannel.chunk.getRecords().size());
         return newChannel;
     }
 
@@ -1200,6 +1227,50 @@ public class AdaptiveGridFTPClient {
         synchronized (fileList) {
             return fileList.remove(0);
         }
+    }
+
+
+    public static double[] runModelling(FileCluster chunk, TunableParameters tunableParameters, double sampleThroughput,
+                                        double[] relaxation_rates) {
+        double[] resultValues = new double[4];
+        try {
+            double sampleThroughputinMb = sampleThroughput / Math.pow(10, 6);
+            ProcessBuilder pb = new ProcessBuilder("python", "src/main/python/optimizer.py",
+                    "-f", "chunk_" + chunk.getDensity() + ".txt",
+                    "-c", "" + tunableParameters.getConcurrency(),
+                    "-p", "" + tunableParameters.getParallelism(),
+                    "-q", "" + tunableParameters.getPipelining(),
+                    "-t", "" + sampleThroughputinMb,
+                    "--cc-rate", "" + relaxation_rates[0],
+                    "--p-rate", "" + relaxation_rates[1],
+                    "--ppq-rate", "" + relaxation_rates[2],
+                    "--maxcc", "" + AdaptiveGridFTPClient.transferTask.getMaxConcurrency());
+            String formatedString = pb.command().toString()
+                    .replace(",", "")  //remove the commas
+                    .replace("[", "")  //remove the right bracket
+                    .replace("]", "")  //remove the left bracket
+                    .trim();           //remove trailing spaces from partially initialized arrays
+            System.out.println("input:" + formatedString);
+            Process p = pb.start();
+            BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String output, line;
+            if ((output = in.readLine()) == null) {
+                in = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+                while ((output = in.readLine()) != null) {
+                    System.out.println("Output:" + output);
+                }
+            }
+            while ((line = in.readLine()) != null) { // Ignore intermediate log messages
+                output = line;
+            }
+            String[] values = output.trim().split("\\s+");
+            for (int i = 0; i < values.length; i++) {
+                resultValues[i] = Double.parseDouble(values[i]);
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+        return resultValues;
     }
 
 }
