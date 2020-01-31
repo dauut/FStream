@@ -57,6 +57,8 @@ public class GridFTPClient implements Runnable {
 
     private static final Log LOG = LogFactory.getLog(GridFTPClient.class);
 
+    public static double currentTotalThroughput = 0;
+
     public GridFTPClient(String source, String dest, String proxy) {
         try {
             usu = new URI(source).normalize();
@@ -596,9 +598,9 @@ public class GridFTPClient implements Runnable {
             totalThroughput += ((throughputInMbps) / (1000 * 1000.0));
 
         }
-        if (Double.compare(AdaptiveGridFTPClient.transferTask.getBandwidth(), totalThroughput)<0){
-            AdaptiveGridFTPClient.transferTask.setBandwidth(totalThroughput);
-        }
+//        if (Double.compare(AdaptiveGridFTPClient.transferTask.getBandwidth(), totalThroughput)<0){
+//            AdaptiveGridFTPClient.transferTask.setBandwidth(totalThroughput);
+//        }
 
         writer2.write(timer + "\t" + totalChannelInUse + "\t" + timer + "\t" + totalThroughput + "\n");
         writer2.flush();
@@ -617,6 +619,11 @@ public class GridFTPClient implements Runnable {
         String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").format(Calendar.getInstance().getTime());
         writer3.write(timeStamp + "," + chunk1AvgSize + "," + chunk2AvgSize + "," + totalThroughput +"\n");
         writer3.flush();
+//        currentTotalThroughput=totalThroughput;
+        if (totalThroughput > AdaptiveGridFTPClient.upperLimit){
+            AdaptiveGridFTPClient.upperLimit = totalThroughput;
+        }
+        AdaptiveGridFTPClient.avgThroughput.add(totalThroughput);
         System.out.println("*******************");
         if (ftpClient.fileClusters.size() > 1 && useDynamicScheduling) {
             checkIfChannelReallocationRequired(estimatedCompletionTimes);
