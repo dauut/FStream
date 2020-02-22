@@ -128,8 +128,10 @@ public class ConfigurationParams {
         break;
       case "-bw":
       case "-bandwidth":
+        AdaptiveGridFTPClient.upperLimitInit = Integer.parseInt(args[1]) * 1000;
+        AdaptiveGridFTPClient.upperLimit = Integer.parseInt(args[1]) * 1000;
         if (args.length > 1 || Double.parseDouble(args[1]) > 100) {
-         bandwidth = Math.pow(10, 9) * Double.parseDouble(args[1]);
+          bandwidth = Math.pow(10, 9) * Double.parseDouble(args[1]);
         } else {
           LOG.fatal("-bw requires bandwidth in GB");
         }

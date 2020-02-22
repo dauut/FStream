@@ -22,7 +22,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static client.ConfigurationParams.maximumChunks;
-import static client.ConfigurationParams.profiling;
 
 public class AdaptiveGridFTPClient {
 
@@ -76,9 +75,12 @@ public class AdaptiveGridFTPClient {
     public static ArrayList<Double> avgBand = new ArrayList<Double>();
 
     public static ArrayList<Double> avgThroughput = new ArrayList<>();
-    public static double upperLimit = 20000;
-    public static double upperLimitInit = 20000;
+    public static double upperLimit;
+    public static double upperLimitInit;
     public static int counterOfProfilingChanger = 0;
+
+    public HashMap<String, Integer> historicalProfiling = new HashMap<>();
+    private boolean histroy = false;
 
     public AdaptiveGridFTPClient() {
         //initialize output streams for message logging
@@ -237,8 +239,8 @@ public class AdaptiveGridFTPClient {
             if (ConfigurationParams.profiling && profilingCounter > 2) {
 
                 // if there is no new file for 100 seconds than look for new settings.
-                if ((chunks != null && dataNotChangeCounter > 0 && dataNotChangeCounter %2 == 0 && !ConfigurationParams.isStaticTransfer) || !firstProfiling) {
-                    if (!firstProfiling ){
+                if ((chunks != null && dataNotChangeCounter > 0 && dataNotChangeCounter % 2 == 0 && !ConfigurationParams.isStaticTransfer) || !firstProfiling) {
+                    if (!firstProfiling) {
                         firstProfiling = true;
                     }
                     long start = System.currentTimeMillis();
@@ -304,53 +306,67 @@ public class AdaptiveGridFTPClient {
 //        avgThroughput.add(totalThroughput);
         LOG.info("-------------PROFILING START------------------");
         System.out.println("-------------PROFILING START------------------");
+
+//        if (histroy && chunks.size() == 1 && historicalProfiling.containsKey(chunks.get(0).getDensity().toString()) && !historicalFirstCheck){
+//            SessionParameters sp = sessionParametersMap.get(chunks.get(0).getDensity().toString());
+//            sp.setConcurrency(chunks.get(0).getTunableParameters().getConcurrency());
+//            sessionParametersMap.put(chunks.get(0).getDensity().toString(), sp);
+//
+//            System.err.println("HISTORICAL ALLOCATION COMPLETED");
+//
+//            historicalFirstCheck = true;
+//        }else {
+
         double tp = 0;
-        for (int i = avgThroughput.size()-1; i >avgThroughput.size() -4; i--){
+        for (int i = avgThroughput.size() - 1; i > avgThroughput.size() - 4; i--) {
             double tmp = avgThroughput.get(i);
             System.out.println("TMP THROUGHPUT = " + tmp);
             tp += tmp;
         }
         totalThroughput = tp / 3;
         double peak = upperLimitInit * 20 / 100 + upperLimitInit;
-        double low = upperLimitInit - upperLimitInit * 20 /100;
+        double low = upperLimitInit - upperLimitInit * 20 / 100;
         System.out.println("TOTAL THROUGHOUT AVG = " + totalThroughput + " peaak = " + peak + " low = " + low);
         if (totalThroughput > low) {
             System.err.println("CONT. NO NEED PROFILING");
             counterOfProfilingChanger++;
-        }else{
+        } else {
             double perChannelThroughput;
 //        double upperLimit = (transferTask.getBandwidth() / Math.pow(10,6) * 80) / 100;
 //        double upperLimit = transferTask.getBandwidth() / Math.pow(10,6);
             perChannelThroughput = totalThroughput / channelInUse.size();
             LOG.info("upperLimit = " + upperLimit + " perChannelThroughput = " + perChannelThroughput);
             System.out.println("upperLimit = " + upperLimit + " perChannelThroughput = " + perChannelThroughput);
-            upperLimit = upperLimitInit * 70 / 100;
+            upperLimit = upperLimitInit * 80 / 100;
             int possibleConcCount = (int) ((int) upperLimit / perChannelThroughput);
             System.out.println("POssible ch count = " + possibleConcCount);
-//        if (possibleConcCount > channelInUse.size()) {
+            if (possibleConcCount > channelInUse.size()) {
 
-            if (possibleConcCount > channelInUse.size()){
-                possibleConcCount = channelInUse.size() / 2 + channelInUse.size();
-            }else if(possibleConcCount > channelInUse.size() * 2){
-                possibleConcCount = channelInUse.size() + channelInUse.size() / 2;
+                if (possibleConcCount > channelInUse.size()) {
+                    possibleConcCount = channelInUse.size() * 2;
+                } else if (possibleConcCount > channelInUse.size() * 2) {
+                    possibleConcCount = channelInUse.size() * 2 + channelInUse.size() / 2;
+                }
+
+                if (possibleConcCount > conf.maxConcurrency) {
+                    possibleConcCount = conf.maxConcurrency;
+                }
+
+
+                System.out.println("NEW POSSIBLE CHANNEL COUNT ===== " + possibleConcCount);
+                Utils.allocateChannelsToChunks(chunks, possibleConcCount, conf.channelDistPolicy);
+                System.out.println("Allocation copmleted: ");
+                for (FileCluster f : chunks) {
+                    System.out.println("HISTORY ------------ Chunk = " + f.getDensity().toString() + " new channel count = " + f.getTunableParameters().getConcurrency());
+                    historicalProfiling.put(f.getDensity().toString(), f.getTunableParameters().getConcurrency());
+                    System.out.println(f.getDensity() + " conc = " + f.getTunableParameters().getConcurrency());
+                    SessionParameters sp = sessionParametersMap.get(f.getDensity().toString());
+                    sp.setConcurrency(f.getTunableParameters().getConcurrency());
+                    sessionParametersMap.put(f.getDensity().toString(), sp);
+                }
             }
-
-            if (possibleConcCount > conf.maxConcurrency){
-                possibleConcCount = conf.maxConcurrency;
-            }
-
-
-            System.out.println("NEW POSSIBLE CHANNEL COUNT ===== " + possibleConcCount);
-            Utils.allocateChannelsToChunks(chunks, possibleConcCount, conf.channelDistPolicy);
-            System.out.println("Allocation copmleted: ");
-            for (FileCluster f : chunks) {
-                System.out.println(f.getDensity() + " conc = " + f.getTunableParameters().getConcurrency());
-                SessionParameters sp = sessionParametersMap.get(f.getDensity().toString());
-                sp.setConcurrency(f.getTunableParameters().getConcurrency());
-                sessionParametersMap.put(f.getDensity().toString(), sp);
-            }
-//        }
         }
+//        }
 
         LOG.info("-------------PROFILING END------------------");
         System.out.println("-------------PROFILING END------------------");
@@ -451,6 +467,13 @@ public class AdaptiveGridFTPClient {
             }
         }
 
+//        int chcoun =0;
+//        for (int i =0; i < chunks.size(); i++){
+//            chcoun+=chunks.get(i).getTunableParameters().getConcurrency();
+//        }
+//
+//        transferTask.setMaxConcurrency(chcoun);
+//        Utils.allocateChannelsToChunks(chunks, transferTask.getMaxConcurrency(), conf.channelDistPolicy);
         for (FileCluster fileCluster : chunks) {
             gridFTPClient.runTransfer(fileCluster);
             channelSettingsOfTransferringChunk(fileCluster, sessionParametersMap.get(fileCluster.getDensity().toString()));
@@ -484,6 +507,7 @@ public class AdaptiveGridFTPClient {
     }
 
     private void addNewFilesToChunks() throws Exception {
+//        historicalFirstCheck = false;
         XferList newFiles = newDataset;
         dataSizeofCurrentTransfer += newFiles.size();
         chunks = Utils.createFileClusters(newFiles, chunks, conf.bandwidth, conf.rtt, maximumChunks);
@@ -509,11 +533,13 @@ public class AdaptiveGridFTPClient {
         if (ConfigurationParams.isStaticTransfer) {
             transferTask.setMaxConcurrency(GridFTPClient.TransferChannel.channelPairList.size());
         }
-//        Utils.allocateChannelsToChunks(chunks, transferTask.getMaxConcurrency(), conf.channelDistPolicy);
+
+        if (!ConfigurationParams.profiling)
+            Utils.allocateChannelsToChunks(chunks, transferTask.getMaxConcurrency(), conf.channelDistPolicy);
 
         globalFileCounter++;
 
-        if (chunks.size() > 1 && ConfigurationParams.isStaticTransfer) {
+        if (chunks.size() > 1) {
 
             if ((chunks.get(0).getRecords().channels == null && chunks.get(1).getRecords().channels != null) ||
                     (chunks.get(1).getRecords().channels != null && chunks.get(0).getRecords().channels != null &&
@@ -797,26 +823,51 @@ public class AdaptiveGridFTPClient {
                             + "[CUR] concurrency = " + sp.getConcurrency()
                             + "; parallelism = " + sp.getParallelism()
                             + "; pipelining = " + sp.getPipelining());
-                    if (!ConfigurationParams.profiling) {
+                    if (!ConfigurationParams.profiling || (!historicalProfiling.containsKey(cType) &&  (chunks.get(i).getTunableParameters() == null || chunks.get(i).getTunableParameters().getConcurrency() == 0))) {
                         sp.setConcurrency(tb.getConcurrency());
+                    } else if (histroy && historicalProfiling.containsKey(cType)) {
+                        System.err.println("HISTORY--------- Historical check Completed CONCURRENCY = " + historicalProfiling.get(cType));
+                        sp.setConcurrency(historicalProfiling.get(cType));
+                        tb.setConcurrency(historicalProfiling.get(cType));
                     }
+
                     sp.setPipelining(tb.getPipelining());
-                    if (!ConfigurationParams.profiling){
+                    if (!ConfigurationParams.profiling) {
                         sp.setParallelism(tb.getParallelism());
                     }
                     sp.setBufferSize(tb.getBufferSize());
-                    chunks.get(i).setTunableParameters(tb);
+
+                    if (!ConfigurationParams.isStaticTransfer && !ConfigurationParams.profiling && (cType.equals("LARGE") || (cType.equals("SMALL"))) && tb.getConcurrency() <=2){
+                        tb.setConcurrency(tb.getConcurrency()*2);
+                        chunks.get(i).setTunableParameters(tb);
+                        sp.setConcurrency(tb.getConcurrency());
+                    }else{
+                        chunks.get(i).setTunableParameters(tb);
+                    }
+//                    chunks.get(i).setTunableParameters(tb);
+
 
                 } else {
                     SessionParameters sp = new SessionParameters();
-                    if (!ConfigurationParams.profiling) {
+                    if (!ConfigurationParams.profiling || (!historicalProfiling.containsKey(cType) && (chunks.get(i).getTunableParameters() == null || chunks.get(i).getTunableParameters().getConcurrency() == 0))) {
                         sp.setConcurrency(tb.getConcurrency());
+                    } else if (histroy && historicalProfiling.containsKey(cType)) {
+                        System.err.println("HISTORY-2-2--------- Historical check Completed CONCURRENCY = " + historicalProfiling.get(cType));
+                        sp.setConcurrency(historicalProfiling.get(cType));
+                        tb.setConcurrency(historicalProfiling.get(cType));
                     }
                     sp.setPipelining(tb.getPipelining());
                     sp.setParallelism(tb.getParallelism());
                     sp.setBufferSize(tb.getBufferSize());
                     sessionParametersMap.put(cType, sp);
-                    chunks.get(i).setTunableParameters(tb);
+                    if (!ConfigurationParams.isStaticTransfer && !ConfigurationParams.profiling && (cType.equals("LARGE") || (cType.equals("SMALL"))) && tb.getConcurrency() <=2){
+                        tb.setConcurrency(tb.getConcurrency()*2);
+                        chunks.get(i).setTunableParameters(tb);
+                        sp.setConcurrency(tb.getConcurrency());
+                    }else{
+                        chunks.get(i).setTunableParameters(tb);
+                    }
+//                    chunks.get(i).setTunableParameters(tb);
                 }
 
                 debugLogger.debug("[DYNAMIC] Chunk: " + chunks.get(i).getDensity() + "; [REQ] Concurrency: " +
@@ -843,7 +894,7 @@ public class AdaptiveGridFTPClient {
     private void allocateChannelsOnDemand(int maxConcForThisChunk, int desiredConcurrency, FileCluster chunk,
                                           boolean isConcurrencyChange, boolean isPipeChange) throws InterruptedException {
 
-        if (ConfigurationParams.isStaticTransfer && chunks.size() > 2) {
+        if (ConfigurationParams.isStaticTransfer && chunks.size() >= 2) {
             if (chunk.getRecords().channels.size() < desiredConcurrency && chunks.get(1).getRecords().channels.size() > 0) {
                 FileCluster otherChunk = chunks.get(1);
                 int stopChannelCount = desiredConcurrency - chunk.getRecords().channels.size();

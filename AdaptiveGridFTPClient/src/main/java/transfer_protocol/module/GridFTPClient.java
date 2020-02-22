@@ -620,8 +620,9 @@ public class GridFTPClient implements Runnable {
         writer3.write(timeStamp + "," + chunk1AvgSize + "," + chunk2AvgSize + "," + totalThroughput +"\n");
         writer3.flush();
 //        currentTotalThroughput=totalThroughput;
-        if (totalThroughput > AdaptiveGridFTPClient.upperLimit){
-            AdaptiveGridFTPClient.upperLimit = totalThroughput;
+        if (totalThroughput > AdaptiveGridFTPClient.upperLimitInit){
+            AdaptiveGridFTPClient.upperLimitInit = totalThroughput;
+            System.out.println("LİMİT CHANGED ...... " + AdaptiveGridFTPClient.upperLimitInit);
         }
         AdaptiveGridFTPClient.avgThroughput.add(totalThroughput);
         System.out.println("*******************");
@@ -922,7 +923,12 @@ public class GridFTPClient implements Runnable {
                         checkDataThread.start();
                         System.out.println("Check data started....");
                     } else {
-                        System.out.println("Check data still alive.......");
+                        if (i % 4 == 0){
+                            System.out.println("restart checkdata thread");
+                            checkDataThread = null;
+                        }else{
+                            System.out.println("Check data still alive.......");
+                        }
                     }
                 }
                 System.out.println("Leaving monitoring...");
