@@ -1,17 +1,25 @@
 ## FStream
 
-### Application level throughput optimization. 
-Master Thesis Project: High-performance data transfer optimization via dynamic settings. Developed a system that performs application-
-level changes on the network to achieve high and stable throughput during file transfers. The system adapts pipelining,
-parallelism, and concurrency parameters to file chunks characteristics like size and file count. Initial results show that the
-algorithm lowers network overhead about 30% - 40% with at most 10% throughput decrease. The project developed as a
-Java multithreading application. Also, I use XSede GridFTP and JGlobus API, and supercomputers.
+#### Application level throughput optimization. 
+
+FStream offers performance guarantees to time-sensitive streaming applications 
+by continuously monitoring transfer performance and adjusting transfer settings through online profiling
+to adapt dynamic system conditions and sustain high network performance. 
+FStream also takes advantage of long-running nature of streaming workflows and keeps track of 
+past profiling results to greatly reduce
+convergence time of future online profiling executions. We evaluated the
+performance of FStream by transferring several synthetic and real-world
+workloads using high-performance production networks and found that
+it offers up to an order of magnitude performance improvement over
+state-of-the-art transfer applications.
 
 
 
-### Project structure
+
+
+#### Project structure
 ```
-.AdaptiveGridFTPClient/
+.AdaptiveGridFTPClient/             # FStream Client
 ├── src                              # Source files 
 |    ├── main                
 |    |    ├── shell-scripts            # helper scritps
@@ -21,6 +29,9 @@ Java multithreading application. Also, I use XSede GridFTP and JGlobus API, and 
 |    ├── test                         # tests
 ├── logs                             # transfer logs
 └── README.md
+.axis/                              #lib
+.gridftp/                           #lib
+...                                 #lib
 ```
 
 ## Installation
