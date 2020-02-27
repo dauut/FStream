@@ -31,7 +31,11 @@ state-of-the-art transfer applications.
 #### Evaluation
 In this project, we used the [GridFTP](https://en.wikipedia.org/wiki/GridFTP) and [JGlobus](https://github.com/jglobus/JGlobus/) to transfer the huge volume of data between three pairs of [XSEDE](https://www.xsede.org/) sites. Thus, we increased average throughput by 2.3x-9.1x comparatively to previous works and existing transfer methods.  
 
-![Stampede2 - Comet Transfer Results](imgs/st2_comet_results.png) ![OSG - Stampede2 Transfer Results](imgs/osg_to_st2_results.png) ![Bridges - Comet Transfer Results](imgs/bridges_comet_results.png) 
+| Syntax | Description | asdsadsa | 
+| ----------- | ----------- | ----------- |
+| ![Stampede2 - Comet Transfer Results](imgs/st2_comet_results.png) | ![OSG - Stampede2 Transfer Results](imgs/osg_to_st2_results.png)| ![Bridges - Comet Transfer Results](imgs/bridges_comet_results.png) |
+
+   
 
 
 
