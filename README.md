@@ -1,4 +1,4 @@
-## AdaptiveGridFTPClientStream
+## FStream
 
 ### Application level throughput optimization. 
 Master Thesis Project: High-performance data transfer optimization via dynamic settings. Developed a system that performs application-
