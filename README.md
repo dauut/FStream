@@ -35,7 +35,10 @@ In this project, we used the [GridFTP](https://en.wikipedia.org/wiki/GridFTP) an
 | ----------- | ----------- | ----------- |
 | ![Stampede2 - Comet Transfer Results](imgs/st2_comet_results.png) | ![OSG - Stampede2 Transfer Results](imgs/osg_to_st2_results.png)| ![Bridges - Comet Transfer Results](imgs/bridges_comet_results.png) |
 
-   
+Our proposed model adapts transfer settings according to ongoing throughput rates and changing file characteristics during transfers. Thus, it changes concurrency, pipelining and parallelism value according to the heuristic algorithm. Results showed that profiling transfers outperform other existing models. 
 
+<p align="center">
+  <img width="460" height="300" src="https://github.com/dauut/Comment-Delegation-Propagation-Simulation/blob/master/img/avg_results.png?raw=true">
+</p>
 
 
