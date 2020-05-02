@@ -38,7 +38,7 @@ In this project, we used the [GridFTP](https://en.wikipedia.org/wiki/GridFTP) an
 Our proposed model adapts transfer settings according to ongoing throughput rates and changing file characteristics during transfers. Thus, it changes concurrency, pipelining and parallelism value according to the heuristic algorithm. Results showed that profiling transfers outperform other existing models. 
 
 <p align="center">
-  <img width="560" height="365" src="https://github.com/dauut/FStream/blob/master/imgs/inst-throughput.png?raw=true">
+  <img width="750" height="365" src="https://github.com/dauut/FStream/blob/master/imgs/inst-throughput.png?raw=true">
 </p>
 
 
