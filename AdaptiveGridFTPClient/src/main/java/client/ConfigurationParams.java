@@ -41,6 +41,8 @@ public class ConfigurationParams {
 
   boolean enableIntegrityVerification = false;
 
+  public static int percentageRate = 100;
+
   static void init() {
     String home_dir_path = new File("").getAbsolutePath();
     INPUT_DIR = home_dir_path + "/historical_data/activeFiles/";
@@ -246,6 +248,9 @@ public class ConfigurationParams {
         break;
       case "-profiling":
         profiling = true;
+        break;
+      case "-percRate":
+        percentageRate = Integer.parseInt(args[1]);
         break;
       default:
         System.err.println("Unrecognized input parameter " + config);
