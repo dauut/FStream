@@ -75,11 +75,20 @@ public class AdaptiveGridFTPClient {
     public static ArrayList<Double> avgThroughput = new ArrayList<>();
     public static double upperLimit;
     public static double upperLimitInit;
+    public static final double THE_LIMIT = 3000;
     public static int counterOfProfilingChanger = 0;
 
     public HashMap<String, Integer> historicalProfiling = new HashMap<>();
-    private boolean histroy = false;
 
+    //// set -profiling parameter in config file.
+    // set this tru for historical analysis
+    private boolean history = false;
+
+
+    // Quality of Service trigger
+    // Set desired throughput in method: speedLimitedProfiling()
+    // will be parameter in the future
+    // set -profiling parameter in config file.
     public static boolean limitedTransfer = true;
 
     public AdaptiveGridFTPClient() {
@@ -104,6 +113,13 @@ public class AdaptiveGridFTPClient {
     }
 
     public static void main(String[] args) throws Exception {
+        /*
+        * This project is alive and
+        *
+        * */
+
+
+
         AdaptiveGridFTPClient adaptiveGridFTPClient = new AdaptiveGridFTPClient();
         adaptiveGridFTPClient.parseArguments(args); //parse arguments
         adaptiveGridFTPClient.initConnection(); //init connection
@@ -344,8 +360,8 @@ public class AdaptiveGridFTPClient {
     }
 
     private void speedLimitedProfiling() throws InterruptedException {
-        upperLimitInit = 3000;
-        upperLimit = 3000;
+        upperLimitInit = THE_LIMIT;
+        upperLimit = THE_LIMIT;
 
         int curChannelCount = channelInUse.size();
         double tp = 0;
@@ -994,7 +1010,7 @@ public class AdaptiveGridFTPClient {
                             + "; pipelining = " + sp.getPipelining());
                     if (!ConfigurationParams.profiling || (!historicalProfiling.containsKey(cType) && (chunks.get(i).getTunableParameters() == null || chunks.get(i).getTunableParameters().getConcurrency() == 0))) {
                         sp.setConcurrency(tb.getConcurrency());
-                    } else if (histroy && historicalProfiling.containsKey(cType)) {
+                    } else if (history && historicalProfiling.containsKey(cType)) {
                         System.err.println("HISTORY--------- Historical check Completed CONCURRENCY = " + historicalProfiling.get(cType));
                         sp.setConcurrency(historicalProfiling.get(cType));
                         tb.setConcurrency(historicalProfiling.get(cType));
@@ -1020,7 +1036,7 @@ public class AdaptiveGridFTPClient {
                     SessionParameters sp = new SessionParameters();
                     if (!ConfigurationParams.profiling || (!historicalProfiling.containsKey(cType) && (chunks.get(i).getTunableParameters() == null || chunks.get(i).getTunableParameters().getConcurrency() == 0))) {
                         sp.setConcurrency(tb.getConcurrency());
-                    } else if (histroy && historicalProfiling.containsKey(cType)) {
+                    } else if (history && historicalProfiling.containsKey(cType)) {
                         System.err.println("HISTORY-2-2--------- Historical check Completed CONCURRENCY = " + historicalProfiling.get(cType));
                         sp.setConcurrency(historicalProfiling.get(cType));
                         tb.setConcurrency(historicalProfiling.get(cType));
