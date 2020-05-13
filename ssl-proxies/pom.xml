@@ -65,7 +65,7 @@
 	</dependencies>
 
     <properties>
-        <surefire.version>2.12</surefire.version>
+        <surefire.version>2.19.1</surefire.version>
         <skipTests>false</skipTests>
     </properties>
 
