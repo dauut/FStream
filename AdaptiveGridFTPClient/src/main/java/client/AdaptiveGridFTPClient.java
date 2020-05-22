@@ -483,7 +483,7 @@ public class AdaptiveGridFTPClient {
         }
     }
 
-
+/*
     private void speedLimitedProfiling() {
         upperLimitInit = THE_LIMIT;
         upperLimit = THE_LIMIT;
@@ -631,7 +631,7 @@ public class AdaptiveGridFTPClient {
                     sessionParametersMap.put(f.getDensity().toString(), sp);
                 }
             }
-            */
+
 
             counterOfProfilingChanger = 0;
             double perChannelThroughput;
@@ -678,7 +678,7 @@ public class AdaptiveGridFTPClient {
         LOG.info("-------------PROFILING END------------------");
         System.out.println("-------------PROFILING END------------------");
     }
-
+*/
     private void parseArguments(String[] arguments) {
         conf.parseArguments(arguments, transferTask);
     }
