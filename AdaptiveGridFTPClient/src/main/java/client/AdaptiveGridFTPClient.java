@@ -376,29 +376,28 @@ public class AdaptiveGridFTPClient {
 
         int curChannelCount = channelInUse.size();
         double totalThroughput = tp / 3;
+        double totalThroughput1 = avgThroughput.get(avgThroughput.size()-1);
 
         double perChannelThroughput;
         perChannelThroughput = totalThroughput / channelInUse.size();
         System.out.println("PERCHANNEL THROUGHPUT = " + perChannelThroughput);
 
         int diff = Math.abs((int) (totalThroughput - upperLimit));
+        int diff1 = Math.abs((int) (totalThroughput1 - upperLimit));
         int newChannelCount = curChannelCount;
         System.out.println("**CURRENT CHANNEL COUNT = " + curChannelCount);
 
 
         if (totalThroughput > upperLimit) {
             System.out.println("throughput is HIGHER");
-            if (diff > ((int) upperLimit * 20 / 100)) {
+            if ((diff > ((int) upperLimit * 15 / 100)) && (diff1 > ((int) upperLimit * 15 / 100))) {
                 newChannelCount = (int) (upperLimit / perChannelThroughput);
                 counterOfProfilingChanger = 0;
                 System.out.println("QoS profiled. New channel count = " + newChannelCount);
             }
 
-
-            if (counterOfProfilingChanger > 2 || (diff > ((int) upperLimit * 5 / 100) && diff < ((int) upperLimit * 10 / 100))) {
-
+            if (counterOfProfilingChanger > 3 || (diff > ((int) upperLimit * 5 / 100) && diff < ((int) upperLimit * 15 / 100))) {
                 System.err.println("The speed was reliable, fine tuning is started.....");
-
                 qOSChangePipeAndPar(-1);
                 counterOfProfilingChanger = 0;
             } else {
@@ -408,14 +407,14 @@ public class AdaptiveGridFTPClient {
 
         } else {
             System.out.println("throughput is LOWER");
-            if (diff > ((int) upperLimit * 20 / 100)) {
+            if ((diff > ((int) upperLimit * 20 / 100)) && (diff1 > ((int) upperLimit * 20 / 100))) {
                 newChannelCount = (int) (upperLimit / perChannelThroughput);
                 System.out.println("QoS profiled. New channel count = " + newChannelCount);
                 counterOfProfilingChanger = 0;
             }
 
             if (newChannelCount > curChannelCount*5){
-                newChannelCount = curChannelCount * 3;
+                newChannelCount = curChannelCount * 5;
             }
 
             if (counterOfProfilingChanger > 2 || (diff > ((int) upperLimit * 5 / 100) && diff < ((int) upperLimit * 10 / 100))) {
@@ -454,12 +453,12 @@ public class AdaptiveGridFTPClient {
             boolean parChanged = false;
             for (ChannelModule.ChannelPair c : f.getRecords().channels) {
                 if (f.getDensity().toString().equals("SMALL") && c.getPipelining() >= 1) {
-                    System.err.println("Channel: " + c.getId() + " PIPELINING changed to > " + (c.getPipelining() - 1));
+                    System.err.println("Channel: " + c.getId() + " PIPELINING changed from > " + c.getPipelining() + " to " + (c.getPipelining() - (isUp)));
                     f.getTunableParameters().setPipelining(c.getPipelining() - (isUp));
                     c.setPipelining(c.getPipelining() - (isUp));
                 }
-
-                if (f.getDensity().toString().equals("LARGE") && c.parallelism >= 1 && !parChanged) {
+//
+//                if (f.getDensity().toString().equals("LARGE") && c.parallelism >= 1 && !parChanged) {
 //                    System.err.println("CURRENT PARALLELISM = " + c.parallelism);
 //                    int par = c.parallelism - (isUp);
 //                    System.err.println("Channel: " + c.getId() + " PARALLELISM changed to > " + (c.parallelism - (isUp)));
@@ -477,7 +476,7 @@ public class AdaptiveGridFTPClient {
 //                        e.printStackTrace();
 //                    }
 //                    parChanged = true;
-                }
+//                }
 
             }
         }

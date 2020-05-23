@@ -68,7 +68,7 @@ public class GridFTPClient implements Runnable {
             System.exit(-1);
         }
         proxyFile = proxy;
-        executor = Executors.newFixedThreadPool(30);
+        executor = Executors.newFixedThreadPool(100);
     }
 
     public void setPerfFreq(int perfFreq) {
@@ -527,7 +527,7 @@ public class GridFTPClient implements Runnable {
         }
     }
 
-    private void monitorChannels(int interval, Writer writer, Writer writer2, Writer writer3, int timer) throws IOException {
+    private void monitorChannels(int interval, Writer writer, Writer writer2, int timer) throws IOException {
         DecimalFormat df = new DecimalFormat("###.##");
         double[] estimatedCompletionTimes = new double[ftpClient.fileClusters.size()];
         int totalChannelInUse = 0;
@@ -605,21 +605,6 @@ public class GridFTPClient implements Runnable {
         writer2.write(timer + "\t" + totalChannelInUse + "\t" + timer + "\t" + totalThroughput + "\n");
         writer2.flush();
 
-        double chunk1AvgSize = 0.0;
-        double chunk2AvgSize = 0.0;
-        if (AdaptiveGridFTPClient.chunks!=null){
-            for (int i = 0; i < AdaptiveGridFTPClient.chunks.size(); i++){
-                if (AdaptiveGridFTPClient.chunks.get(i).getDensity().toString().equals("SMALL")){
-                    chunk1AvgSize =  AdaptiveGridFTPClient.chunks.get(i).getCentroid() / (1024.0 * 1024);
-                }else{
-                    chunk2AvgSize =  AdaptiveGridFTPClient.chunks.get(i).getCentroid() / (1024.0 * 1024);
-                }
-            }
-        }
-        String timeStamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").format(Calendar.getInstance().getTime());
-        writer3.write(timeStamp + "," + chunk1AvgSize + "," + chunk2AvgSize + "," + totalThroughput +"\n");
-        writer3.flush();
-//        currentTotalThroughput=totalThroughput;
         if (totalThroughput > AdaptiveGridFTPClient.upperLimitInit && !AdaptiveGridFTPClient.limitedTransfer){
             AdaptiveGridFTPClient.upperLimitInit = totalThroughput;
             System.out.println("LİMİT CHANGED ...... " + AdaptiveGridFTPClient.upperLimitInit);
@@ -895,7 +880,6 @@ public class GridFTPClient implements Runnable {
         int timer = 0;
         Writer writer;
         Writer writer2;
-        Writer writer3;
         AdaptiveGridFTPClient main;
 
         TransferMonitor(AdaptiveGridFTPClient main) {
@@ -909,12 +893,11 @@ public class GridFTPClient implements Runnable {
             try {
                 writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("inst-throughput.txt"), "utf-8"));
                 writer2 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("inst-overall-throughput.txt"), "utf-8"));
-                writer3 = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("time-series-analysis.txt"), "utf-8"));
                 initializeMonitoring();
                 Thread.sleep(interval);
                 while (!AdaptiveGridFTPClient.isTransferCompleted) {
                     timer += interval / 1000;
-                    monitorChannels(interval / 1000, writer, writer2,writer3, timer);
+                    monitorChannels(interval / 1000, writer, writer2, timer);
                     Thread.sleep(interval);
                     i++;
 
