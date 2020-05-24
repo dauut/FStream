@@ -60,13 +60,6 @@ public class MonitorTransfer extends Thread {
                 System.out.println("Transfer not completed difff" + Utils.printSize((f.getRecords().initialSize - f.getRecords().totalTransferredSize), true));
             }
         }
-        try {
-            AdaptiveGridFTPClient.writer.write("Res: " + timeSpent + "\t" + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
-                    / (timeSpent * (1000.0 * 1000)) + "\n");
-            AdaptiveGridFTPClient.writer.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         debugLogger.debug(timeSpent + "\t" + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
                 / (timeSpent * (1000.0 * 1000)));
         LOG.info("Throughput : " + (AdaptiveGridFTPClient.dataSizeofCurrentTransfer * 8.0)
