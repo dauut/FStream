@@ -110,11 +110,10 @@ public class AdaptiveGridFTPClient {
                 System.out.println("Client is null.");
             }
 
-            long start = System.currentTimeMillis();
-            long end = 0;
             dataset = gridFTPClient.getListofFiles(allFiles);
 
             //if there is data then cont.
+            //if lists are too large and then it may consume more time to read and compare file lists.
             isNewFile = false;
             for (int i = 0; i < dataset.getFileList().size(); i++) {
                 if (allFiles.contains(dataset.getFileList().get(i).fullPath())) {
@@ -126,8 +125,6 @@ public class AdaptiveGridFTPClient {
                     isNewFile = true;
                 }
             }
-            end += (System.currentTimeMillis() - start) / 1000;
-            System.out.println("READ TIME: " + end + " seconds. File count = " + dataset.getFileList().size());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -313,8 +310,12 @@ public class AdaptiveGridFTPClient {
                 counterOfProfilingChanger = 0;
             }
 
-            if (newChannelCount > curChannelCount * 5) {
-                newChannelCount = curChannelCount * 5;
+            //avoid dramatic changes
+            if (newChannelCount > curChannelCount * 2) {
+                newChannelCount = curChannelCount * 2;
+            }
+            if (newChannelCount > conf.maxConcurrency){
+                newChannelCount = conf.maxConcurrency;
             }
 
             if (counterOfProfilingChanger > 2 || (diff > ((int) upperLimit * 5 / 100) && diff < ((int) upperLimit * 10 / 100))) {
@@ -619,7 +620,6 @@ public class AdaptiveGridFTPClient {
                         GridFTPClient.executor.submit(runs);
                     }
                 }
-
                 startMonitorThisTransfer();
                 createExtraChannels(chunk);
             } else {
@@ -811,14 +811,7 @@ public class AdaptiveGridFTPClient {
                     }
                     sp.setBufferSize(tb.getBufferSize());
 
-                    if (!ConfigurationParams.isStaticTransfer && !ConfigurationParams.profiling &&
-                            (cType.equals("LARGE") || (cType.equals("SMALL"))) && tb.getConcurrency() <= 2) {
-                        tb.setConcurrency(tb.getConcurrency() * 2);
-                        chunks.get(i).setTunableParameters(tb);
-                        sp.setConcurrency(tb.getConcurrency());
-                    } else {
-                        chunks.get(i).setTunableParameters(tb);
-                    }
+                    runChannelsWithNewConf(i, cType, tb, sp);
 //                    chunks.get(i).setTunableParameters(tb);
 
 
@@ -836,14 +829,7 @@ public class AdaptiveGridFTPClient {
                     sp.setParallelism(tb.getParallelism());
                     sp.setBufferSize(tb.getBufferSize());
                     sessionParametersMap.put(cType, sp);
-                    if (!ConfigurationParams.isStaticTransfer && !ConfigurationParams.profiling &&
-                            (cType.equals("LARGE") || (cType.equals("SMALL"))) && tb.getConcurrency() <= 2) {
-                        tb.setConcurrency(tb.getConcurrency() * 2);
-                        chunks.get(i).setTunableParameters(tb);
-                        sp.setConcurrency(tb.getConcurrency());
-                    } else {
-                        chunks.get(i).setTunableParameters(tb);
-                    }
+                    runChannelsWithNewConf(i, cType, tb, sp);
                 }
 
                 debugLogger.debug("[DYNAMIC] Chunk: " + chunks.get(i).getDensity() + "; [REQ] Concurrency: " +
@@ -858,6 +844,17 @@ public class AdaptiveGridFTPClient {
                         "; Updated file count = " + chunks.get(i).getRecords().getFileList().size() +
                         "; Chunk Size: " + Utils.printSize(chunks.get(i).getTotalSize(), true));
             }
+        }
+    }
+
+    private void runChannelsWithNewConf(int i, String cType, TunableParameters tb, SessionParameters sp) {
+        if (!ConfigurationParams.isStaticTransfer && !ConfigurationParams.profiling &&
+                (cType.equals("LARGE") || (cType.equals("SMALL"))) && tb.getConcurrency() <= 2) {
+            tb.setConcurrency(tb.getConcurrency() * 2);
+            chunks.get(i).setTunableParameters(tb);
+            sp.setConcurrency(tb.getConcurrency());
+        } else {
+            chunks.get(i).setTunableParameters(tb);
         }
     }
 
