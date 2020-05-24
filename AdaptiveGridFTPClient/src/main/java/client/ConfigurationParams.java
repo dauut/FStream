@@ -42,6 +42,9 @@ public class ConfigurationParams {
   boolean enableIntegrityVerification = false;
 
   public static int percentageRate = 100;
+  public static double speedLimit = 20000;
+  public static boolean limitedTransfer = false;
+
 
   static void init() {
     String home_dir_path = new File("").getAbsolutePath();
@@ -189,6 +192,14 @@ public class ConfigurationParams {
         }
         LOG.info("Number of fileClusters = " + maximumChunks);
         break;
+      case "-speedLimit":
+        if (args.length > 1){
+          speedLimit = Double.parseDouble(args[1]);
+        }else{
+          LOG.info("Speed Limit requires integer number = ");
+        }
+        LOG.info("Desired speed limit = " + speedLimit);
+        break;
       case "-use-hysteresis":
         useHysterisis = true;
         LOG.info("Use hysteresis based approach");
@@ -222,6 +233,10 @@ public class ConfigurationParams {
         useOnlineTuning = true;
         usedSecondArgument = false;
         LOG.info("Online modelling/tuning enabled.");
+        break;
+      case "-qos":
+        limitedTransfer=true;
+        LOG.info("Quality of Service module activated.");
         break;
       case "-use-checksum":
         enableIntegrityVerification = true;

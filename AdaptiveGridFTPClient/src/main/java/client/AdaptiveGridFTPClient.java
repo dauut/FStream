@@ -76,21 +76,21 @@ public class AdaptiveGridFTPClient {
     public static ArrayList<Double> avgThroughput = new ArrayList<>();
     public static double upperLimit;
     public static double upperLimitInit;
-    public static final double THE_LIMIT = 12000;
+    //    public static final double THE_LIMIT = 12000;
     public static int counterOfProfilingChanger = 0;
 
     public HashMap<String, Integer> historicalProfiling = new HashMap<>();
 
     //// set -profiling parameter in config file.
     // set this tru for historical analysis
-    private boolean history = false;
+    private final boolean history = false;
 
 
     // Quality of Service trigger
     // Set desired throughput in method: speedLimitedProfiling()
     // will be parameter in the future
     // set -profiling parameter in config file.
-    public static boolean limitedTransfer = true;
+//    public static boolean limitedTransfer = true;
 
     public AdaptiveGridFTPClient() {
         //initialize output streams for message logging
@@ -246,8 +246,7 @@ public class AdaptiveGridFTPClient {
                     tuneNewChunkParameters(estimatedParamsForChunks);
 //                    Utils.allocateChannelsToChunks(chunks, transferTask.getMaxConcurrency(), conf.channelDistPolicy);
 
-                    if (limitedTransfer) {
-//                        speedLimitedProfiling();
+                    if (ConfigurationParams.limitedTransfer) {
                         qosProfiling();
                     } else {
                         chunkProfiling();
@@ -362,9 +361,7 @@ public class AdaptiveGridFTPClient {
 
     private void qosProfiling() {
 
-        upperLimitInit = THE_LIMIT;
-        upperLimit = THE_LIMIT;
-
+        upperLimit = ConfigurationParams.speedLimit;
         LOG.info("-------------QoS START------------------");
         System.out.println("-------------QoS START------------------");
 
@@ -376,7 +373,7 @@ public class AdaptiveGridFTPClient {
 
         int curChannelCount = channelInUse.size();
         double totalThroughput = tp / 3;
-        double totalThroughput1 = avgThroughput.get(avgThroughput.size()-1);
+        double totalThroughput1 = avgThroughput.get(avgThroughput.size() - 1);
 
         double perChannelThroughput;
         perChannelThroughput = totalThroughput / channelInUse.size();
@@ -413,7 +410,7 @@ public class AdaptiveGridFTPClient {
                 counterOfProfilingChanger = 0;
             }
 
-            if (newChannelCount > curChannelCount*5){
+            if (newChannelCount > curChannelCount * 5) {
                 newChannelCount = curChannelCount * 5;
             }
 
@@ -457,227 +454,31 @@ public class AdaptiveGridFTPClient {
                     f.getTunableParameters().setPipelining(c.getPipelining() - (isUp));
                     c.setPipelining(c.getPipelining() - (isUp));
                 }
-//
-//                if (f.getDensity().toString().equals("LARGE") && c.parallelism >= 1 && !parChanged) {
-//                    System.err.println("CURRENT PARALLELISM = " + c.parallelism);
-//                    int par = c.parallelism - (isUp);
-//                    System.err.println("Channel: " + c.getId() + " PARALLELISM changed to > " + (c.parallelism - (isUp)));
-//                    f.getTunableParameters().setParallelism(par);
-////
-//                    System.err.println("RESET CHANNEL > > > > " + f.getTunableParameters().getParallelism());
-//                    try {
-//                        Thread.sleep(500);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                    try {
-//                        parallelismChange(c, f);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                    parChanged = true;
-//                }
+
+                if (f.getDensity().toString().equals("LARGE") && c.parallelism >= 1 && !parChanged) {
+                    System.err.println("CURRENT PARALLELISM = " + c.parallelism);
+                    int par = c.parallelism - (isUp);
+                    System.err.println("Channel: " + c.getId() + " PARALLELISM changed to > " + (c.parallelism - (isUp)));
+                    f.getTunableParameters().setParallelism(par);
+
+                    System.err.println("RESET CHANNEL > > > > " + f.getTunableParameters().getParallelism());
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        parallelismChange(c, f);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    parChanged = true;
+                }
 
             }
         }
     }
 
-/*
-    private void speedLimitedProfiling() {
-        upperLimitInit = THE_LIMIT;
-        upperLimit = THE_LIMIT;
-
-        int curChannelCount = channelInUse.size();
-        double tp = 0;
-
-        for (int i = avgThroughput.size() - 1; i > avgThroughput.size() - 4; i--) {
-            double tmp = avgThroughput.get(i);
-            tp += tmp;
-        }
-
-        double totalThroughput = tp / 3;
-        int diff = Math.abs((int) (totalThroughput - upperLimit));
-        int newChannelCount = curChannelCount;
-
-        if (totalThroughput > upperLimit) {
-
-//            int diff = (int) (totalThroughput - upperLimit);
-//            int newChannelCount = curChannelCount;
-
-            if (diff > ((int) upperLimit * 50 / 100)) {
-                counterOfProfilingChanger = 0;
-
-                System.out.println("Decrease channel size by 2");
-                newChannelCount = curChannelCount / 2;
-
-            } else if (diff > ((int) upperLimit * 20 / 100)) {
-                counterOfProfilingChanger = 0;
-
-                System.out.println("Decrease channel size by 2");
-
-                newChannelCount = curChannelCount - 2;
-            } else if (diff > ((int) upperLimit * 10 / 100) && diff < ((int) upperLimit * 20 / 100)) {
-                counterOfProfilingChanger = 0;
-                System.out.println("Decrease channel size by 1");
-                newChannelCount = curChannelCount - 1;
-            } else if (counterOfProfilingChanger > 2 || (diff > ((int) upperLimit * 5 / 100) && diff < ((int) upperLimit * 10 / 100))) {
-
-                System.err.println("The speed was reliable, fine tuning is started.....");
-
-                for (FileCluster f : chunks) {
-                    boolean parChanged = false;
-                    for (ChannelModule.ChannelPair c : f.getRecords().channels) {
-                        if (f.getDensity().toString().equals("SMALL") && c.getPipelining() >= 1) {
-                            System.err.println("Channel: " + c.getId() + " PIPELINING changed to > " + (c.getPipelining() - 1));
-                            f.getTunableParameters().setPipelining(c.getPipelining() - 1);
-                            c.setPipelining(c.getPipelining() - 1);
-                        }
-
-//                        if (f.getDensity().toString().equals("LARGE") && c.parallelism >= 1 && !parChanged) {
-//                            System.err.println("CURRENT PARALLELISM = " + c.parallelism);
-//                            int par = c.parallelism - 1;
-//                            System.err.println("Channel: " + c.getId() + " PARALLELISM changed to > " + (c.parallelism - 1));
-//                            f.getTunableParameters().setParallelism(par);
-//
-//                            System.err.println("RESET CHANNEL > > > > " + f.getTunableParameters().getParallelism());
-//                            Thread.sleep(500);
-//                            parallelismChange(c,f);
-//                            parChanged = true;
-//                        }
-
-                    }
-                }
-                counterOfProfilingChanger = 0;
-            } else {
-                System.err.println("CONT. NO NEED PROFILING");
-                counterOfProfilingChanger++;
-            }
-
-
-            if (newChannelCount != curChannelCount) {
-
-                System.out.println("==== DECREASED to > " + newChannelCount);
-                Utils.allocateChannelsToChunks(chunks, newChannelCount, conf.channelDistPolicy);
-                for (FileCluster f : chunks) {
-                    if (printSysOut)
-                        System.out.println("HISTORY ------------ Chunk = " + f.getDensity().toString() + " new channel count = " + f.getTunableParameters().getConcurrency());
-                    historicalProfiling.put(f.getDensity().toString(), f.getTunableParameters().getConcurrency());
-                    if (printSysOut)
-                        System.out.println(f.getDensity() + " conc = " + f.getTunableParameters().getConcurrency());
-                    SessionParameters sp = sessionParametersMap.get(f.getDensity().toString());
-                    sp.setConcurrency(f.getTunableParameters().getConcurrency());
-                    sessionParametersMap.put(f.getDensity().toString(), sp);
-                }
-            }
-
-        } else {
-
-            /*
-            if(diff > ((int) upperLimit * 50 / 100)){
-                newChannelCount = curChannelCount * 2;
-            }else if (diff > ((int) upperLimit * 20 / 100) ) {
-                counterOfProfilingChanger = 0;
-                newChannelCount = curChannelCount + 2;
-            } else if (diff > ((int) upperLimit * 10 / 100)  && diff < ((int) upperLimit * 20 / 100)) {
-                counterOfProfilingChanger = 0;
-                newChannelCount = curChannelCount +1;
-            } else if (counterOfProfilingChanger > 2 || (diff > ((int) upperLimit * 5 / 100) && diff < ((int) upperLimit * 10 / 100))) {
-
-                System.err.println("The speed was reliable, fine tuning is started.....");
-
-                for (FileCluster f : chunks) {
-                    boolean parChanged = false;
-                    for (ChannelModule.ChannelPair c : f.getRecords().channels) {
-                        if (f.getDensity().toString().equals("SMALL") && c.getPipelining() >= 0) {
-                            System.err.println("Channel: " + c.getId() + " PIPELINING changed to > " + (c.getPipelining() + 1));
-                            f.getTunableParameters().setPipelining(c.getPipelining() + 1);
-                            c.setPipelining(c.getPipelining() + 1);
-                        }
-
-                        if (f.getDensity().toString().equals("LARGE") && c.parallelism >= 0 && !parChanged) {
-                            System.err.println("CURRENT PARALLELISM = " + c.parallelism);
-                            int par = c.parallelism + 1;
-                            System.err.println("Channel: " + c.getId() + " PARALLELISM changed to > " + (c.parallelism + 1));
-                            f.getTunableParameters().setParallelism(par);
-                            parChanged = true;
-                        }
-
-                    }
-                    if (parChanged){
-                        System.err.println("RESET CHANNELS > > > > " + f.getTunableParameters().getParallelism());
-                        parallelismChange(f);
-                    }
-                }
-                counterOfProfilingChanger = 0;
-            } else {
-                System.err.println("CONT. NO NEED PROFILING");
-                counterOfProfilingChanger++;
-            }
-
-
-            if (newChannelCount != curChannelCount) {
-
-                System.out.println("==== DECREASED to > " + newChannelCount);
-                Utils.allocateChannelsToChunks(chunks, newChannelCount, conf.channelDistPolicy);
-                for (FileCluster f : chunks) {
-                    if (printSysOut)
-                        System.out.println("HISTORY ------------ Chunk = " + f.getDensity().toString() + " new channel count = " + f.getTunableParameters().getConcurrency());
-                    historicalProfiling.put(f.getDensity().toString(), f.getTunableParameters().getConcurrency());
-                    if (printSysOut)
-                        System.out.println(f.getDensity() + " conc = " + f.getTunableParameters().getConcurrency());
-                    SessionParameters sp = sessionParametersMap.get(f.getDensity().toString());
-                    sp.setConcurrency(f.getTunableParameters().getConcurrency());
-                    sessionParametersMap.put(f.getDensity().toString(), sp);
-                }
-            }
-
-
-            counterOfProfilingChanger = 0;
-            double perChannelThroughput;
-            perChannelThroughput = totalThroughput / channelInUse.size();
-            int possibleConcCount = (int) ((int) upperLimit / perChannelThroughput);
-            if (printSysOut)
-                System.out.println("POssible ch count = " + possibleConcCount);
-            if (possibleConcCount > channelInUse.size()) {
-
-                if (possibleConcCount > channelInUse.size() * 3) {
-                    possibleConcCount = channelInUse.size() * 3;
-                } else if (possibleConcCount > channelInUse.size() * 2 && possibleConcCount < channelInUse.size() * 3) {
-                    possibleConcCount = channelInUse.size() * 2;
-                } else if (possibleConcCount > channelInUse.size() && possibleConcCount < channelInUse.size() * 2) {
-                    possibleConcCount = channelInUse.size() + 1;
-                }
-
-
-                if (possibleConcCount > conf.maxConcurrency) {
-                    possibleConcCount = conf.maxConcurrency;
-                }
-
-                if (printSysOut)
-                    System.out.println("NEW POSSIBLE CHANNEL COUNT ===== " + possibleConcCount);
-                Utils.allocateChannelsToChunks(chunks, possibleConcCount, conf.channelDistPolicy);
-                if (printSysOut)
-                    System.out.println("Allocation copmleted: ");
-                for (FileCluster f : chunks) {
-                    if (printSysOut)
-                        System.out.println("HISTORY ------------ Chunk = " + f.getDensity().toString() + " new channel count = " + f.getTunableParameters().getConcurrency());
-                    historicalProfiling.put(f.getDensity().toString(), f.getTunableParameters().getConcurrency());
-                    if (printSysOut)
-                        System.out.println(f.getDensity() + " conc = " + f.getTunableParameters().getConcurrency());
-                    SessionParameters sp = sessionParametersMap.get(f.getDensity().toString());
-                    sp.setConcurrency(f.getTunableParameters().getConcurrency());
-                    sessionParametersMap.put(f.getDensity().toString(), sp);
-                }
-            }
-
-        }
-
-//        }
-
-        LOG.info("-------------PROFILING END------------------");
-        System.out.println("-------------PROFILING END------------------");
-    }
-*/
     private void parseArguments(String[] arguments) {
         conf.parseArguments(arguments, transferTask);
     }

@@ -598,14 +598,14 @@ public class GridFTPClient implements Runnable {
             totalThroughput += ((throughputInMbps) / (1000 * 1000.0));
 
         }
-//        if (Double.compare(AdaptiveGridFTPClient.transferTask.getBandwidth(), totalThroughput)<0){
-//            AdaptiveGridFTPClient.transferTask.setBandwidth(totalThroughput);
-//        }
+        if (Double.compare(AdaptiveGridFTPClient.transferTask.getBandwidth(), totalThroughput)<0){
+            AdaptiveGridFTPClient.transferTask.setBandwidth(totalThroughput);
+        }
 
         writer2.write(timer + "\t" + totalChannelInUse + "\t" + timer + "\t" + totalThroughput + "\n");
         writer2.flush();
 
-        if (totalThroughput > AdaptiveGridFTPClient.upperLimitInit && !AdaptiveGridFTPClient.limitedTransfer){
+        if (totalThroughput > AdaptiveGridFTPClient.upperLimitInit && !ConfigurationParams.limitedTransfer){
             AdaptiveGridFTPClient.upperLimitInit = totalThroughput;
             System.out.println("LİMİT CHANGED ...... " + AdaptiveGridFTPClient.upperLimitInit);
         }
