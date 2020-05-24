@@ -46,6 +46,9 @@ public class ConfigurationParams {
     public static boolean limitedTransfer = false;
     public static boolean history = false;
 
+    public static double upperLimit = 20000;
+    public static double upperLimitInit = 20000;
+
     static void init() {
         String home_dir_path = new File("").getAbsolutePath();
         INPUT_DIR = home_dir_path + "/historical_data/activeFiles/";
@@ -62,7 +65,7 @@ public class ConfigurationParams {
             } else {
                 is = classloader.getResourceAsStream(configFile);
             }
-            if (is!=null) {
+            if (is != null) {
                 BufferedReader br = new BufferedReader(new InputStreamReader(is));
                 String line;
                 while ((line = br.readLine()) != null) {
@@ -134,9 +137,9 @@ public class ConfigurationParams {
                 break;
             case "-bw":
             case "-bandwidth":
-                AdaptiveGridFTPClient.upperLimitInit = Integer.parseInt(args[1]) * 1000;
-                AdaptiveGridFTPClient.upperLimit = Integer.parseInt(args[1]) * 1000;
-                if (Double.parseDouble(args[1]) > 100) {
+                upperLimitInit = Integer.parseInt(args[1]) * 1000;
+                upperLimit = Integer.parseInt(args[1]) * 1000;
+                if (args.length > 1 || Double.parseDouble(args[1]) > 100) {
                     bandwidth = Math.pow(10, 9) * Double.parseDouble(args[1]);
                 } else {
                     LOG.fatal("-bw requires bandwidth in GB");

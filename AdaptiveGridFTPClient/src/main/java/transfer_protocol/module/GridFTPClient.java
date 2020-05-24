@@ -605,9 +605,9 @@ public class GridFTPClient implements Runnable {
         writer2.write(timer + "\t" + totalChannelInUse + "\t" + timer + "\t" + totalThroughput + "\n");
         writer2.flush();
 
-        if (totalThroughput > AdaptiveGridFTPClient.upperLimitInit && !ConfigurationParams.limitedTransfer){
-            AdaptiveGridFTPClient.upperLimitInit = totalThroughput;
-            System.out.println("LİMİT CHANGED ...... " + AdaptiveGridFTPClient.upperLimitInit);
+        if (totalThroughput > ConfigurationParams.upperLimitInit && !ConfigurationParams.limitedTransfer){
+            ConfigurationParams.upperLimitInit = totalThroughput;
+            System.out.println("LİMİT CHANGED ...... " + ConfigurationParams.upperLimitInit);
         }
         AdaptiveGridFTPClient.avgThroughput.add(totalThroughput);
         System.out.println("*******************");

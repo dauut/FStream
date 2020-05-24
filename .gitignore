@@ -28,3 +28,4 @@ myproxy/
 ssl-proxies/
 ssl-proxies-tomcat/
 test-utils/
+./inst-overall-throughput.txt
