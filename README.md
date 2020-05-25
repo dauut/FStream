@@ -2,24 +2,7 @@
 
 #### Real-time Application level throughput optimization. 
 
-Robust and predictable network performance is critical for
-distributed science workflows to move large volumes of streaming data
-and help breakthrough discoveries be made timely. However, existing
-data transfer applications are designed for batch workloads in a way that
-their settings cannot be altered once they are set. This, in turn, severely
-limits streaming applications from adapting to changing dataset and net-
-work conditions to meet stringent transfer performance requirements.
-In this paper, we propose FStream to offer performance guarantees to
-time-sensitive streaming applications by continuously monitoring trans-
-fer performance and adjusting transfer settings through online profiling
-to adapt dynamic system conditions and sustain high network perfor-
-mance. FStream also takes advantage of long-running nature of stream-
-ing workflows and keeps track of past profiling results to greatly reduce
-convergence time of future online profiling executions. We evaluated the
-performance of FStream by transferring several synthetic and real-world
-workloads using high-performance production networks and found that
-it offers up to an order of magnitude performance improvement over
-state-of-the-art transfer applications.
+Robust   and   predictable   network   performance   iscritical for distributed science workflows to move large volumesof  streaming  data  and  help  breakthrough  discoveries  be  madetimely. However, existing data transfer applications are designedfor  batch  workloads  in  a  way  that  their  settings  cannot  bealtered once they are set. This, in turn, severely limits streamingapplications  from  adapting  to  changing  dataset  and  networkconditions to meet stringent transfer performance requirements.In  this  paper,  we  proposeFStreamto  offer  performance  guar-antees  to  time-sensitive  streaming  applications  by  continuouslymonitoring transfer performance and adjusting transfer settingsthrough online profiling to adapt dynamic system conditions andsustain high network performance.FStreamalso takes advantageof  long-running  nature  of  streaming  workflows  and  keeps  trackof  past  profiling  results  to  greatly  reduce  convergence  time  offuture online profiling executions. We evaluated the performanceofFStreamby   transferring   several   synthetic   and   real-worldworkloads   using   high-performance   production   networks   andfound  that  it  offers  up  to  an  order  of  magnitude  performanceimprovement  over  state-of-the-art  transfer  applications.
 
 #### Project structure
 ```
