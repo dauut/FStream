@@ -22,9 +22,8 @@ Robust   and   predictable   network   performance   iscritical for distributed 
 ```
 ### Reqiuriments
 - Linux environment. 
-- This project runs on XSEDE Grid computer networks. Also, it uses `myproxy-logon` certificate.
- 
- ```myproxy-logon -s myproxy.xsede.org -l [username] -t 9999```
+- This project runs on XSEDE Grid computer networks. Also, it uses `myproxy-logon` certificate.<br>
+```myproxy-logon -s myproxy.xsede.org -l [username] -t 9999```
 
 ### Parameters
 ```
