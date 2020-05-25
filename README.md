@@ -58,14 +58,8 @@ state-of-the-art transfer applications.
 #### Evaluation
 In this project, we used the [GridFTP](https://en.wikipedia.org/wiki/GridFTP) and [JGlobus](https://github.com/jglobus/JGlobus/) to transfer the huge volume of data between three pairs of [XSEDE](https://www.xsede.org/) sites. Thus, we increased average throughput by 2.3x-9.1x comparatively to previous works and existing transfer methods.  
 
-<!---
-| Stampede2 - Comet Transfer Results | OSG - Stampede2 Transfer Results | Bridges - Comet Transfer Results | 
-| ----------- | ----------- | ----------- |
-| ![Stampede2 - Comet Transfer Results](imgs/st2_comet_results.png) | ![OSG - Stampede2 Transfer Results](imgs/osg_to_st2_results.png)| ![Bridges - Comet Transfer Results](imgs/bridges_comet_results.png) |
---->
-
 <p align="center">
-  <img width="640" height="480" src="https://raw.githubusercontent.com/dauut/FStream/master/imgs/st2_comet_results.png">
+  <img width="500" height="375" src="https://raw.githubusercontent.com/dauut/FStream/master/imgs/st2_comet_results.png">
 </p>
 
 Our proposed model adapts transfer settings according to ongoing throughput rates and changing file characteristics during transfers. Thus, it changes concurrency, pipelining and parallelism value according to the heuristic algorithm. Results showed that profiling transfers outperform other existing models. 
