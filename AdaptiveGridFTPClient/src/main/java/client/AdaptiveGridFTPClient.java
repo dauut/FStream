@@ -54,7 +54,7 @@ public class AdaptiveGridFTPClient {
     private boolean isExtraChannelNeeded = false;
     private int extraChCount = 0;
 
-    public static final boolean printSysOut = true;
+    public static final boolean printSysOut = false;
     private HashMap<String, Long> newDatasetSizes = new HashMap<>();
     public static boolean firstTransferCompleted = false;
     public static boolean isSwapped = false; //sometimes one of the chunk ends and the other gets its place in arraylist
@@ -185,7 +185,6 @@ public class AdaptiveGridFTPClient {
                             Runnable runs = new RunTransfers(chunk.getRecords().channels.get(i));
                             GridFTPClient.executor.submit(runs);
                         }
-                        System.err.println("Channel ID: " + chunk.getRecords().channels.get(i).getId() + "\n pipe = " + chunk.getRecords().channels.get(i).getPipelining());
                     }
 
                     if (chunk.getRecords().channels.size() < chunk.getTunableParameters().getConcurrency()) {
