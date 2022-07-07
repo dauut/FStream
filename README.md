@@ -4,7 +4,7 @@
 
 Robust   and   predictable   network   performance   iscritical for distributed science workflows to move large volumesof  streaming  data  and  help  breakthrough  discoveries  be  madetimely. However, existing data transfer applications are designedfor  batch  workloads  in  a  way  that  their  settings  cannot  bealtered once they are set. This, in turn, severely limits streamingapplications  from  adapting  to  changing  dataset  and  networkconditions to meet stringent transfer performance requirements.In  this  paper,  we  proposeFStreamto  offer  performance  guar-antees  to  time-sensitive  streaming  applications  by  continuouslymonitoring transfer performance and adjusting transfer settingsthrough online profiling to adapt dynamic system conditions andsustain high network performance.FStreamalso takes advantageof  long-running  nature  of  streaming  workflows  and  keeps  trackof  past  profiling  results  to  greatly  reduce  convergence  time  offuture online profiling executions. We evaluated the performanceofFStreamby   transferring   several   synthetic   and   real-worldworkloads   using   high-performance   production   networks   andfound  that  it  offers  up  to  an  order  of  magnitude  performanceimprovement  over  state-of-the-art  transfer  applications.
 
-[Publication: IEEE](https://ieeexplore.ieee.org/document/9229586)
+[Publication: Streaming File Transfer Optimization for Distributed Science Workflows (IEEE])(https://ieeexplore.ieee.org/document/9229586)
 
 #### Project structure
 ```
